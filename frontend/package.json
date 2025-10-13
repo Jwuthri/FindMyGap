@@ -1,7 +1,7 @@
 {
   "name": "findmygap-frontend",
   "version": "0.1.0",
-  "description": "A FastAPI + Next.js AI agent application with OpenRouter and Agno - Frontend",
+  "description": "",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -21,7 +21,6 @@
     "remark-gfm": "^4.0.0",
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.2.0",
-    "@clerk/nextjs": "^4.29.3",
     "framer-motion": "^10.16.16",
     "react-hot-toast": "^2.4.1"
   },

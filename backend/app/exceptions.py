@@ -1,5 +1,5 @@
 """
-Custom exceptions for FindMyGap.
+Custom exceptions for NeedleAi.
 
 This module provides enhanced exception handling with context, tracing, and structured error details.
 For backward compatibility, it re-exports the enhanced exception system from core.exceptions.

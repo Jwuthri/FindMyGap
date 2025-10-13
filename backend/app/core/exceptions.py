@@ -2,18 +2,18 @@
 Enhanced exception handling with context and tracing.
 """
 
+import logging
 import traceback
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
-from app.utils.logging import get_logger
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-logger = get_logger("exceptions")
+logger = logging.getLogger(__name__)
 
 
 class ErrorSeverity(str, Enum):

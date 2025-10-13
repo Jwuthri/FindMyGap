@@ -2,16 +2,16 @@
 Database transaction management utilities.
 """
 
+import logging
 from contextlib import asynccontextmanager, contextmanager
 from functools import wraps
 from typing import Any, AsyncGenerator, Callable, Generator
 
 from app.exceptions import DatabaseError
-from app.utils.logging import get_logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-logger = get_logger("database.transaction")
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
