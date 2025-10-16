@@ -1,0 +1,6 @@
+### Test Sentry Debug Endpoint
+# This endpoint triggers a division by zero error to test Sentry error tracking
+# Expected: 500 Internal Server Error
+
+GET http://localhost:8000/sentry-debug
+

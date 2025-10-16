@@ -2,6 +2,7 @@
 FindMyGap - FastAPI Backend Package
 """
 import logging
+import logging.config
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -16,7 +17,7 @@ __author__ = "Julien Wuthrich"
 class RichCustomFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.rich_handler = RichHandler(rich_tracebacks=True, tracebacks_suppress=[], tracebacks_show_locals=True)
+        self.rich_handler = RichHandler(rich_tracebacks=False, tracebacks_suppress=[], tracebacks_show_locals=False)
 
     def format(self, record):
         return super().format(record)
@@ -122,7 +123,7 @@ LOGGING_CONFIG = {
             "level": "INFO",
             "formatter": "console",
             "rich_tracebacks": True,
-            "tracebacks_show_locals": True,
+            "tracebacks_show_locals": False,
             "filters": ["noise_filter"],
         },
         "datadog": {
@@ -156,3 +157,11 @@ LOGGING_CONFIG = {
 
 logging.captureWarnings(True)
 logging.config.dictConfig(LOGGING_CONFIG)
+
+
+def get_logger(name: str = None) -> logging.Logger:
+    """Get a logger instance."""
+    if name:
+        return logging.getLogger(f"app.{name}")
+
+    return logging.getLogger("app")
