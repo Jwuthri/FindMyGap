@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     LOG_LVL: str = os.getenv("LOG_LVL", "DEBUG")
 
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
 
     DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/findmygap")
@@ -40,4 +41,4 @@ def get_settings() -> Settings:
     return Settings()
 
 
-logger.info(f"Settings: {get_settings()}")
+SETTINGS = get_settings()

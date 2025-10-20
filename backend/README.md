@@ -68,23 +68,13 @@ async def create_user(session: AsyncSession, data: CreateSchema):
 ```
 
 ### ⚙️ Configuration System
-**Old:** Basic settings → **New:** Environment-aware with secrets management
 ```python
-# Before (v1.x)
 settings = get_settings()
-
-# After (v2.0)
-settings = get_settings(environment="production", validate=True)
-api_key = settings.get_secret("openrouter_api_key")  # Multi-provider secrets
 ```
 
 ### 🚨 Error Handling
-**Old:** Basic HTTP exceptions → **New:** Rich context with tracking
+Rich context with tracking
 ```python
-# Before (v1.x)
-raise HTTPException(400, "Validation failed")
-
-# After (v2.0)
 raise ValidationError(
     message="User validation failed",
     field="email",
@@ -200,21 +190,10 @@ raise ValidationError(
 │   │   │   ├── api_key.py    # API key model
 │   │   │   └── task_result.py # Background task result model
 │   │   └── repositories/     # Data access layer (CRUD operations)
-│   │       ├── user.py       # User repository
-│   │       ├── chat_session.py # Chat session repository
-│   │       ├── chat_message.py # Chat message repository
-│   │       ├── completion.py # Completion repository
-│   │       ├── api_key.py    # API key repository
-│   │       ├── task_result.py # Task result repository
 │   │       └── model_converter.py # Model conversion utilities
 │   │
 │   ├── models/                 # Pydantic API models
 │   │   ├── base.py            # Base response models and error handling
-│   │   ├── chat.py            # Chat-related API models
-│   │   ├── completion.py      # Completion API models
-│   │   ├── user.py            # User management API models
-│   │   ├── api_key.py         # API key management models
-│   │   └── task.py            # Background task models
 │   │
 │   ├── services/               # Business services
 │   │   ├── chat_service.py    # Chat business logic
@@ -346,9 +325,7 @@ Once started, the following services will be available:
 | **📊 Metrics Dashboard** | http://localhost:8000/api/v1/metrics/summary | Application performance metrics |
 | **🔍 Health Status** | http://localhost:8000/api/v1/health/ready | Kubernetes readiness probe |
 | **📈 Prometheus Metrics** | http://localhost:8000/api/v1/metrics/prometheus | Monitoring integration |
-
 | **🗄️ pgAdmin** | http://localhost:5050 | Database management (admin@findmygap.local / admin) |
-
 | **🐰 RabbitMQ Management** | http://localhost:15672 | Message queue management (guest/guest) |
 | **🌸 Flower (Celery)** | http://localhost:5555 | Task queue monitoring |
 
@@ -459,26 +436,6 @@ curl "http://localhost:8000/api/v1/chat/sessions?limit=20"
 curl -X POST "http://localhost:8000/api/v1/chat/sessions" \
   -H "Content-Type: application/json" \
   -d '{"title": "New Conversation", "model_name": "gpt-4o-mini"}'
-```
-
-### ⚡ Text Completion
-
-```bash
-# Generate text completion
-curl -X POST "http://localhost:8000/api/v1/completions/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Write a short story about AI",
-    "max_tokens": 200,
-    "temperature": 0.8,
-    "model": "gpt-4o-mini"
-  }'
-
-# Streaming completion
-curl -X POST "http://localhost:8000/api/v1/completions/stream" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "Tell me about FastAPI", "max_tokens": 100}' \
-  --no-buffer
 ```
 
 ### 🔧 Background Tasks
@@ -885,69 +842,6 @@ docker-compose up --scale celery-worker=3 -d
 # Monitor services
 docker-compose ps
 docker-compose logs -f backend
-```
-
-### Kubernetes Deployment
-
-```yaml
-# Example kubernetes deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: findmygap-backend
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: findmygap-backend
-  template:
-    metadata:
-      labels:
-        app: findmygap-backend
-    spec:
-      containers:
-      - name: backend
-        image: findmygap-backend:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: secret-key
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: backend-secrets
-              key: database-url
-        readinessProbe:
-          httpGet:
-            path: /api/v1/health/ready
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /api/v1/health/live
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-```
-
-### External Monitoring Integration
-
-```bash
-# Prometheus metrics scraping
-scrape_configs:
-  - job_name: 'findmygap-backend'
-    static_configs:
-      - targets: ['backend:8000']
-    metrics_path: /api/v1/metrics/prometheus
-    scrape_interval: 15s
-
-# Health check monitoring
-curl -f "http://backend:8000/api/v1/health/ready" || exit 1
 ```
 
 ## 🔧 Troubleshooting

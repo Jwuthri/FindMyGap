@@ -8,12 +8,13 @@ from typing import Any, Dict, Optional
 
 import httpx
 import jwt
-from app.config import Settings, get_settings
-from app.exceptions import UnauthorizedError, ValidationError
-from app.utils.logging import get_logger
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+
+from app.config import Settings, get_settings
+from app.exceptions import UnauthorizedError, ValidationError
+from app import get_logger
 
 logger = get_logger("clerk_auth")
 

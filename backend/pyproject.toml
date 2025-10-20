@@ -92,6 +92,9 @@ dependencies = [
     # Health checks
     "psutil>=5.9.6",
     "sentry-sdk[fastapi]>=2.41.0",
+    "pyaudio>=0.2.14",
+    "pytest>=8.4.2",
+    "langwatch-scenario>=0.7.9",
 ]
 
 [project.optional-dependencies]

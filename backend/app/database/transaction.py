@@ -1,17 +1,22 @@
 """
 Database transaction management utilities.
+
+Provides transaction management for both sync and async database operations,
+with special support for FastAPI dependency injection patterns.
 """
 
 import logging
 from contextlib import asynccontextmanager, contextmanager
 from functools import wraps
-from typing import Any, AsyncGenerator, Callable, Generator
+from typing import Any, AsyncGenerator, Callable, Generator, TypeVar
 
 from app.exceptions import DatabaseError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
 
 
 @contextmanager
@@ -128,12 +133,12 @@ def async_transactional(func: Callable) -> Callable:
 
 class TransactionManager:
     """
-    Advanced transaction manager for complex operations.
+    Advanced transaction manager for complex operations with savepoint support.
     """
 
     def __init__(self, db: Session):
         self.db = db
-        self._savepoints = []
+        self._savepoints: list[str] = []
 
     def savepoint(self) -> str:
         """Create a savepoint and return its name."""
@@ -143,7 +148,7 @@ class TransactionManager:
         logger.debug(f"Created savepoint: {savepoint_name}")
         return savepoint_name
 
-    def rollback_to_savepoint(self, savepoint_name: str = None):
+    def rollback_to_savepoint(self, savepoint_name: str | None = None):
         """Rollback to a specific savepoint or the most recent one."""
         if not self._savepoints:
             raise DatabaseError("No savepoints available")
@@ -184,9 +189,92 @@ class TransactionManager:
             raise DatabaseError(f"Transaction rollback failed: {str(e)}") from e
 
 
+class AsyncTransactionManager:
+    """
+    Async version of TransactionManager for complex async operations.
+    """
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self._savepoints: list[str] = []
+
+    async def savepoint(self) -> str:
+        """Create a savepoint and return its name."""
+        savepoint_name = f"sp_{len(self._savepoints)}"
+        await self.db.begin_nested()
+        self._savepoints.append(savepoint_name)
+        logger.debug(f"Created async savepoint: {savepoint_name}")
+        return savepoint_name
+
+    async def rollback_to_savepoint(self, savepoint_name: str | None = None):
+        """Rollback to a specific savepoint or the most recent one."""
+        if not self._savepoints:
+            raise DatabaseError("No savepoints available")
+
+        if savepoint_name is None:
+            savepoint_name = self._savepoints[-1]
+
+        try:
+            await self.db.rollback()
+            if savepoint_name in self._savepoints:
+                index = self._savepoints.index(savepoint_name)
+                self._savepoints = self._savepoints[:index]
+
+            logger.debug(f"Rolled back to async savepoint: {savepoint_name}")
+        except Exception as e:
+            logger.error(f"Failed to rollback to savepoint {savepoint_name}: {e}")
+            raise DatabaseError(f"Async savepoint rollback failed: {str(e)}") from e
+
+    async def commit(self):
+        """Commit the transaction and clear savepoints."""
+        try:
+            await self.db.commit()
+            self._savepoints.clear()
+            logger.debug("Async transaction committed, savepoints cleared")
+        except Exception as e:
+            logger.error(f"Async transaction commit failed: {e}")
+            raise DatabaseError(f"Async transaction commit failed: {str(e)}") from e
+
+    async def rollback(self):
+        """Rollback the entire transaction and clear savepoints."""
+        try:
+            await self.db.rollback()
+            self._savepoints.clear()
+            logger.debug("Async transaction rolled back, savepoints cleared")
+        except Exception as e:
+            logger.error(f"Async transaction rollback failed: {e}")
+            raise DatabaseError(f"Async transaction rollback failed: {str(e)}") from e
+
+
+# Read-only transaction scopes for query-only operations
+
+@asynccontextmanager
+async def read_only_scope(db: AsyncSession) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provide a read-only scope for query operations.
+    No commit is performed, ensuring no modifications are persisted.
+    
+    Usage:
+        async with read_only_scope(db) as session:
+            users = await user_repo.async_get_all(session)
+    """
+    try:
+        yield db
+        # No commit for read-only operations
+        logger.debug("Read-only scope completed")
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Read-only scope error: {e}")
+        raise DatabaseError(f"Read-only operation failed: {str(e)}") from e
+
+
 # Bulk operations helpers to prevent N+1 queries
 
-def bulk_load_related(db: Session, primary_objects: list, relation_loader: Callable) -> dict:
+def bulk_load_related(
+    db: Session, 
+    primary_objects: list[T], 
+    relation_loader: Callable[[Session, list[int]], list[Any]]
+) -> dict[int, list[Any]]:
     """
     Bulk load related objects to prevent N+1 queries.
 
@@ -208,7 +296,7 @@ def bulk_load_related(db: Session, primary_objects: list, relation_loader: Calla
     related_objects = relation_loader(db, primary_ids)
 
     # Group related objects by primary ID
-    related_by_id = {}
+    related_by_id: dict[int, list[Any]] = {}
     for related in related_objects:
         primary_id = getattr(related, f"{primary_objects[0].__class__.__name__.lower()}_id")
         if primary_id not in related_by_id:
@@ -218,7 +306,7 @@ def bulk_load_related(db: Session, primary_objects: list, relation_loader: Calla
     return related_by_id
 
 
-def optimize_query_for_eager_loading(query, relationships: list):
+def optimize_query_for_eager_loading(query: Any, relationships: list[str]) -> Any:
     """
     Add eager loading to prevent N+1 queries.
 

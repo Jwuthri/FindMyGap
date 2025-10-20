@@ -35,7 +35,7 @@ from app.core.exceptions import (  # Base classes; Specific exceptions; Legacy a
     validation_exception_handler,
 )
 
-from .utils.logging import get_logger
+from app import get_logger
 
 logger = get_logger("exceptions")
 

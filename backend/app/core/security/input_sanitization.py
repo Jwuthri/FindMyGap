@@ -18,10 +18,10 @@ import socket
 import unicodedata
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
+from bleach import clean
 
 from app.exceptions import ValidationError
-from app.utils.logging import get_logger
-from bleach import clean
+from app import get_logger
 
 logger = get_logger("input_sanitization")
 

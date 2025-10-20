@@ -6,12 +6,13 @@ from abc import ABC
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 from uuid import uuid4
 
-from app.exceptions import DatabaseError, ValidationError
-from app.utils.logging import get_logger
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from app.exceptions import DatabaseError, ValidationError
+from app import get_logger
 
 # Type variables for generic repository
 T = TypeVar("T")  # Model type
@@ -425,38 +426,3 @@ class AsyncBaseRepository(Generic[T], ABC):
         except Exception as e:
             logger.error(f"Error in bulk create {self.model_name}: {e}")
             raise DatabaseError(f"Failed to bulk create {self.model_name}: {str(e)}")
-
-
-class AsyncRepositoryMixin:
-    """Mixin to add common repository methods to specific repositories."""
-
-    async def find_or_create(
-        self,
-        session: AsyncSession,
-        defaults: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> tuple[T, bool]:
-        """
-        Find existing record or create new one.
-
-        Returns:
-            Tuple of (instance, created) where created is True if new record was created
-        """
-        # Try to find existing record
-        filters = kwargs
-        existing = await self.list_with_filters(
-            session,
-            filters=filters,
-            limit=1
-        )
-
-        if existing:
-            return existing[0], False
-
-        # Create new record
-        create_data = kwargs.copy()
-        if defaults:
-            create_data.update(defaults)
-
-        new_instance = await self.create(session, create_data)
-        return new_instance, True

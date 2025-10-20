@@ -7,8 +7,8 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from ...utils.logging import get_logger
-from ..models.user import User
+from app import get_logger
+from app.database.models.user import User
 
 logger = get_logger("user_repository")
 
