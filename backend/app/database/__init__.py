@@ -14,7 +14,7 @@ __all__ = [
     "SessionLocal",
 
     # Database models
-    "User",
+    "UserTable",
     "ChatSession",
     "ChatMessage",
     "Completion",

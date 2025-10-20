@@ -2,11 +2,11 @@
 Database models package for FindMyGap.
 """
 
-from .user import User, UserStatusEnum
+from .user import UserTable, UserStatusEnum
 
 __all__ = [
     # Models
-    "User",
+    "UserTable",
 
     # Enums
     "UserStatusEnum",

@@ -4,7 +4,7 @@ Rate limiting implementation for FindMyGap.
 
 import time
 
-from app.services.redis_client import RedisClient
+RedisClient = None
 
 
 class RateLimiter:

@@ -301,11 +301,11 @@ async def list_users_optimized(
     Fetch users with related data efficiently (no N+1 queries).
     """
     from sqlalchemy import select
-    from app.database.models.user import User
+    from app.database.models.user import UserTable
     
     async with read_only_scope(db) as session:
         # Build query with eager loading
-        query = select(User).offset(skip).limit(limit)
+        query = select(UserTable).offset(skip).limit(limit)
         
         # Add relationships to eager load (prevents N+1)
         # query = optimize_query_for_eager_loading(

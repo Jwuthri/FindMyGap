@@ -12,7 +12,7 @@ from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.config import Settings, get_settings
+from app.config import SETTINGS, Settings
 from app.exceptions import UnauthorizedError, ValidationError
 from app import get_logger
 
@@ -64,7 +64,7 @@ class ClerkAuthProvider:
     """Clerk authentication provider for JWT verification."""
 
     def __init__(self, settings: Settings):
-        self.settings = settings
+        self.settings = SETTINGS
         self.jwks_cache: Optional[Dict[str, Any]] = None
         self.jwks_cache_expiry: Optional[datetime] = None
         self.jwks_url = "https://clerk.dev/.well-known/jwks.json"
@@ -189,11 +189,11 @@ class ClerkAuthProvider:
 # Global Clerk auth provider instance
 _clerk_provider: Optional[ClerkAuthProvider] = None
 
-def get_clerk_provider(settings: Settings = Depends(get_settings)) -> ClerkAuthProvider:
+def get_clerk_provider() -> ClerkAuthProvider:
     """Get Clerk authentication provider instance."""
     global _clerk_provider
     if _clerk_provider is None:
-        _clerk_provider = ClerkAuthProvider(settings)
+        _clerk_provider = ClerkAuthProvider(SETTINGS)
     return _clerk_provider
 
 
@@ -297,8 +297,7 @@ async def clerk_auth_middleware(request: Request, call_next):
         token = auth_header.split(" ")[1]
 
         try:
-            settings = get_settings()
-            provider = get_clerk_provider(settings)
+            provider = get_clerk_provider(SETTINGS)
             user = await provider.verify_token(token)
 
             # Add user to request state

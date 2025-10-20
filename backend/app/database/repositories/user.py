@@ -8,7 +8,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app import get_logger
-from app.database.models.user import User
+from app.database.models.user import UserTable
 
 logger = get_logger("user_repository")
 
@@ -17,9 +17,9 @@ class UserRepository:
     """Repository for User model operations."""
 
     @staticmethod
-    def create(db: Session, email: str, username: str = None, full_name: str = None, **kwargs) -> User:
+    def create(db: Session, email: str, username: str = None, full_name: str = None, **kwargs) -> UserTable:
         """Create a new user."""
-        user = User(
+        user = UserTable(
             email=email,
             username=username,
             full_name=full_name,
@@ -32,27 +32,27 @@ class UserRepository:
         return user
 
     @staticmethod
-    def get_by_id(db: Session, user_id: str) -> Optional[User]:
+    def get_by_id(db: Session, user_id: str) -> Optional[UserTable]:
         """Get user by ID."""
-        return db.query(User).filter(User.id == user_id).first()
+        return db.query(UserTable).filter(UserTable.id == user_id).first()
 
     @staticmethod
-    def get_by_email(db: Session, email: str) -> Optional[User]:
+    def get_by_email(db: Session, email: str) -> Optional[UserTable]:
         """Get user by email."""
-        return db.query(User).filter(User.email == email).first()
+        return db.query(UserTable).filter(UserTable.email == email).first()
 
     @staticmethod
-    def get_by_username(db: Session, username: str) -> Optional[User]:
+    def get_by_username(db: Session, username: str) -> Optional[UserTable]:
         """Get user by username."""
-        return db.query(User).filter(User.username == username).first()
+        return db.query(UserTable).filter(UserTable.username == username).first()
 
     @staticmethod
-    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
+    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[UserTable]:
         """Get all users with pagination."""
-        return db.query(User).offset(skip).limit(limit).all()
+        return db.query(UserTable).offset(skip).limit(limit).all()
 
     @staticmethod
-    def update(db: Session, user_id: str, **kwargs) -> Optional[User]:
+    def update(db: Session, user_id: str, **kwargs) -> Optional[UserTable]:
         """Update user."""
         user = UserRepository.get_by_id(db, user_id)
         if not user:
@@ -89,7 +89,7 @@ class UserRepository:
             db.commit()
 
     @staticmethod
-    def update_last_login(db: Session, user_id: str) -> Optional[User]:
+    def update_last_login(db: Session, user_id: str) -> Optional[UserTable]:
         """Update user's last login timestamp."""
         user = UserRepository.get_by_id(db, user_id)
         if user:
@@ -100,14 +100,14 @@ class UserRepository:
         return user
 
     @staticmethod
-    def search_users(db: Session, search_term: str, skip: int = 0, limit: int = 50) -> List[User]:
+    def search_users(db: Session, search_term: str, skip: int = 0, limit: int = 50) -> List[UserTable]:
         """Search users by email, username or full name."""
         return (
-            db.query(User)
+            db.query(UserTable)
             .filter(
-                User.email.ilike(f"%{search_term}%") |
-                User.username.ilike(f"%{search_term}%") |
-                User.full_name.ilike(f"%{search_term}%")
+                UserTable.email.ilike(f"%{search_term}%") |
+                UserTable.username.ilike(f"%{search_term}%") |
+                UserTable.full_name.ilike(f"%{search_term}%")
             )
             .offset(skip)
             .limit(limit)

@@ -5,5 +5,5 @@ from .user import *
 
 __all__ = [
     # Chat models
-    "UserProfile",
+    "UserSchema",
 ]

@@ -21,7 +21,7 @@ class UserStatusEnum(str, enum.Enum):
     SUSPENDED = "suspended"
 
 
-class User(Base):
+class UserTable(Base):
     """User account model."""
     __tablename__ = "users"
 
@@ -31,7 +31,6 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=True)
     status = Column(SQLEnum(UserStatusEnum), default=UserStatusEnum.ACTIVE)
-    is_superuser = Column(Boolean, default=False)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -47,8 +46,8 @@ class User(Base):
     total_tokens_used = Column(Integer, default=0)
 
     # Relationships
-    chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
-    completions = relationship("Completion", back_populates="user", cascade="all, delete-orphan")
+    # chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
+    # completions = relationship("Completion", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, status={self.status})>"
