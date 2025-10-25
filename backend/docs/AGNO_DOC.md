@@ -15,11 +15,12 @@ Reference: [Agno Documentation](https://docs.agno.com/introduction)
 5. [Tools](#tools)
 6. [Guardrails](#guardrails)
 7. [Teams](#teams)
-8. [Structured Outputs](#structured-outputs)
-9. [Human-in-the-Loop](#human-in-the-loop)
-10. [Testing & Evaluation](#testing--evaluation)
-11. [Advanced Features](#advanced-features)
-12. [Best Practices](#best-practices)
+8. [Workflows](#workflows)
+9. [Structured Outputs](#structured-outputs)
+10. [Human-in-the-Loop](#human-in-the-loop)
+11. [Testing & Evaluation](#testing--evaluation)
+12. [Advanced Features](#advanced-features)
+13. [Best Practices](#best-practices)
 
 ---
 
@@ -474,6 +475,237 @@ team = Team(
 ```
 
 **Reference**: `agno_streaming_simple_team.py`
+
+---
+
+## Workflows
+
+### What is a Workflow?
+
+Workflows provide **step-based orchestration** with more control than Teams. Use workflows when you need:
+- **Sequential execution**: Steps run in a specific order
+- **Data transformation**: Prepare inputs between steps
+- **Mixed components**: Combine agents, teams, and custom functions
+- **Conditional logic**: Branch based on previous step results
+
+### Basic Workflow with Steps
+
+```python
+from agno.agent import Agent
+from agno.team import Team
+from agno.workflow.step import Step
+from agno.workflow.workflow import Workflow
+from agno.db.sqlite import SqliteDb
+
+# Define agents
+hackernews_agent = Agent(
+    name="Hackernews Agent",
+    model=OpenAIChat(id="gpt-5-mini", api_key=API_KEY),
+    tools=[HackerNewsTools()],
+    role="Extract key insights from Hackernews"
+)
+
+web_agent = Agent(
+    name="Web Agent",
+    model=OpenAIChat(id="gpt-5-mini", api_key=API_KEY),
+    role="Search the web for trends"
+)
+
+# Create a team
+research_team = Team(
+    name="Research Team",
+    members=[hackernews_agent, web_agent],
+    instructions="Research tech topics from multiple sources"
+)
+
+# Define agents for later steps
+content_planner = Agent(
+    name="Content Planner",
+    model=OpenAIChat(id="gpt-5-mini", api_key=API_KEY),
+    instructions=[
+        "Plan a content schedule over 4 weeks",
+        "Ensure 3 posts per week"
+    ]
+)
+
+# Define workflow steps
+research_step = Step(
+    name="Research Step",
+    team=research_team
+)
+
+planning_step = Step(
+    name="Content Planning Step",
+    agent=content_planner
+)
+
+# Create workflow
+workflow = Workflow(
+    name="Content Creation Workflow",
+    description="Automated content creation from research to planning",
+    steps=[research_step, planning_step],
+    db=SqliteDb(
+        session_table="workflow_session",
+        db_file="tmp/workflow.db"
+    )
+)
+
+# Run workflow (sync)
+workflow.print_response(
+    input="AI trends in 2024",
+    markdown=True
+)
+```
+
+**Reference**: `agno_workflow_seq_steps.py`
+
+### Custom Step Functions
+
+Use custom functions to transform data between workflow steps:
+
+```python
+from typing import AsyncIterator
+from textwrap import dedent
+from agno.workflow.types import StepInput, StepOutput
+
+async def prepare_input_for_web_search(
+    step_input: StepInput
+) -> AsyncIterator[StepOutput]:
+    """Transform input for the research step."""
+    topic = step_input.input
+    
+    content = dedent(f"""\
+        I'm writing a blog post on the topic:
+        <topic>
+        {topic}
+        </topic>
+        
+        Search the web for at least 10 articles
+    """)
+    
+    yield StepOutput(content=content)
+
+async def prepare_input_for_writer(
+    step_input: StepInput
+) -> AsyncIterator[StepOutput]:
+    """Combine original input with previous step results."""
+    topic = step_input.input
+    research_results = step_input.previous_step_content
+    
+    content = dedent(f"""\
+        I'm writing a blog post on the topic:
+        <topic>
+        {topic}
+        </topic>
+        
+        Here is information from the web:
+        <research_results>
+        {research_results}
+        </research_results>
+    """)
+    
+    yield StepOutput(content=content)
+
+# Add custom functions to workflow
+workflow = Workflow(
+    name="Blog Post Workflow",
+    description="Automated blog creation with data transformation",
+    steps=[
+        prepare_input_for_web_search,  # Custom function
+        research_team,                  # Team
+        prepare_input_for_writer,       # Custom function
+        writer_agent                    # Agent
+    ],
+    db=SqliteDb(db_file="tmp/workflow.db")
+)
+```
+
+**Reference**: `agno_workflow_event_streaming.py`
+
+### Workflow Event Streaming
+
+Stream workflow execution events to track progress:
+
+```python
+from agno.run.workflow import WorkflowRunEvent, WorkflowRunOutputEvent
+
+async def main():
+    workflow = Workflow(
+        name="Blog Post Workflow",
+        steps=[
+            prepare_input_for_web_search,
+            research_team,
+            prepare_input_for_writer,
+            writer_agent
+        ],
+        db=SqliteDb(db_file="tmp/workflow.db")
+    )
+    
+    # Stream workflow events
+    resp = await workflow.arun(
+        input="AI trends in 2024",
+        markdown=True,
+        stream=True,
+        stream_intermediate_steps=True
+    )
+    
+    async for event in resp:
+        if event.event == WorkflowRunEvent.workflow_started.value:
+            print(f"Workflow started: {event}")
+        
+        elif event.event == WorkflowRunEvent.step_started.value:
+            print(f"Step started: {event}")
+        
+        elif event.event == WorkflowRunEvent.step_completed.value:
+            print(f"Step completed: {event}")
+        
+        elif event.event == WorkflowRunEvent.condition_execution_started.value:
+            print(f"Condition started: {event}")
+        
+        elif event.event == WorkflowRunEvent.condition_execution_completed.value:
+            print(f"Condition completed: {event}")
+        
+        elif event.event == WorkflowRunEvent.workflow_completed.value:
+            print(f"Workflow completed: {event}")
+
+# Run async workflow
+import asyncio
+asyncio.run(main())
+```
+
+**Reference**: `agno_workflow_event_streaming.py`
+
+### Workflow Event Types
+
+| Event | When It Fires | Use Case |
+|-------|---------------|----------|
+| `workflow_started` | Workflow begins | Initialize UI, logging |
+| `step_started` | Step execution starts | Show progress indicator |
+| `step_completed` | Step finishes | Update progress, store results |
+| `condition_execution_started` | Conditional branch starts | Log branching logic |
+| `condition_execution_completed` | Conditional branch ends | Track condition results |
+| `workflow_completed` | Workflow finishes | Show final results, cleanup |
+
+### When to Use Workflows vs Teams
+
+**Use Teams when:**
+- Agents need to dynamically collaborate
+- Task delegation is handled by the LLM
+- Flexibility in agent communication is needed
+
+**Use Workflows when:**
+- Steps must run in a specific order
+- You need data transformation between steps
+- Precise control over execution flow is required
+- Combining agents, teams, and custom logic
+
+### Workflow Best Practices
+
+1. **Use async for production**: Always use `await workflow.arun()` with streaming
+2. **Persist with database**: Use SqliteDb or PostgresDb for workflow state
+3. **Transform data between steps**: Use custom functions to prepare inputs
+4. **Stream events**: Monitor progress with `stream=True` and `stream_intermediate_steps=True`
+5. **Mix components**: Combine agents, teams, and custom functions in steps
 
 ---
 

@@ -1,7 +1,14 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import sentry_sdk
 
 from app.config import get_settings
+from app.api.v1 import health
+
+try:
+    from app.api.v1 import analysis
+except ImportError:
+    analysis = None
 
 
 sentry_sdk.init(
@@ -11,4 +18,22 @@ sentry_sdk.init(
     traces_sample_rate=.5,
 )
 
-app = FastAPI()
+app = FastAPI(
+    title="Find My Gaps API",
+    description="Advanced LLM analysis to identify product gaps across entire markets",
+    version="0.1.0"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(health.router, prefix="/api/v1")
+if analysis:
+    app.include_router(analysis.router, prefix="/api/v1")

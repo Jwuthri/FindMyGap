@@ -50,13 +50,14 @@ class Settings(BaseSettings):
     # LLM Configuration
     LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openrouter")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "anthropic/claude-4.5-sonnet")
 
     # Vector DB Configuration
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
 
     # Search
-    BRAVE_SEARCH_API_KEY: str = os.getenv("BRAVE_SEARCH_API_KEY", "")
+    BRAVE_API_KEY: str = os.getenv("BRAVE_API_KEY", "")
 
     # Apify Configuration (Web Scraping)
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "")
