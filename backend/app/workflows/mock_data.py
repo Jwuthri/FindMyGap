@@ -2,8 +2,6 @@
 Mock review data for Find My Gaps analysis.
 """
 
-from datetime import datetime, timedelta
-import random
 from typing import List, Dict, Any
 
 # Mock review database
