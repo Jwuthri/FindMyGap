@@ -7,10 +7,12 @@ from agno.workflow.condition import Condition
 from agno.workflow.parallel import Parallel
 
 from app.workflows.agents.query_analyzer import create_query_analyzer_agent
-from app.workflows.agents.retriever_data import create_database_retrieval_agent
+from app.workflows.agents.retrieval_planner import create_retrieval_planner_agent
 from app.workflows.agents.nlp import create_nlp_analysis_agent
 from app.workflows.agents.output_format import create_output_format_agent
 from app.workflows.teams.writer import create_answer_writer_team
+from app.workflows.steps.data_retrieval import execute_data_retrieval
+from app.workflows.utils.schema_manager import get_all_available_schemas
 from app.config import SETTINGS
 from app import get_logger
 
@@ -97,14 +99,16 @@ def send_to_data_nlp(step_input: StepInput) -> StepOutput:
 # WORKFLOW CREATION
 # ============================================================================
 
-def create_product_gap_workflow(db_file: str = "tmp/product_gap_workflow.db") -> Workflow:
+def create_product_gap_workflow(db_file: str = "tmp/product_gap_workflow.db", user_id: str | None = None) -> Workflow:
     """
     Create the Product Gap Detection Workflow with conditional execution.
     
     Architecture:
     1. Parallel: Query Analysis + Format Detection (both always run)
-    2. Data Retrieval (conditional) - fetch data if needed
-    3. NLP Analysis (conditional) - analyze data if needed
+    2. Data Retrieval (conditional):
+       2a. Retrieval Planning - LLM decides what data to fetch
+       2b. Data Retrieval - Executor fetches raw data (no LLM)
+    3. NLP Analysis (conditional) - analyze raw data if needed
     4. Send to Writer Team (always) - prepare data with format info
     5. Answer Writer Team (always) - creates final answer
     
@@ -120,7 +124,11 @@ def create_product_gap_workflow(db_file: str = "tmp/product_gap_workflow.db") ->
     
     # Create all agents
     query_analyzer = create_query_analyzer_agent(model)
-    data_retrieval = create_database_retrieval_agent(model)
+    
+    # Fetch all available table schemas (platform + user datasets)
+    table_schemas = get_all_available_schemas(db_file, user_id)
+    retrieval_planner = create_retrieval_planner_agent(model, table_schemas=table_schemas)
+    
     nlp_analysis = create_nlp_analysis_agent(model)
     format_detection = create_output_format_agent(model)
     answer_writers = create_answer_writer_team(model)
@@ -132,10 +140,16 @@ def create_product_gap_workflow(db_file: str = "tmp/product_gap_workflow.db") ->
         agent=query_analyzer,
     )
     
+    retrieval_planning_step = Step(
+        name="RetrievalPlanning",
+        description="Plan data retrieval strategy",
+        agent=retrieval_planner,
+    )
+    
     data_retrieval_step = Step(
         name="DataRetrieval",
-        description="Retrieve review data from database",
-        agent=data_retrieval,
+        description="Execute data retrieval and return raw data",
+        executor=execute_data_retrieval,
     )
     
     nlp_analysis_step = Step(
@@ -183,12 +197,15 @@ def create_product_gap_workflow(db_file: str = "tmp/product_gap_workflow.db") ->
             ),
             
             # debugging_step,
-            # Step 2: Data Retrieval if needed
+            # Step 2: Data Retrieval if needed (split into planning + execution)
             Condition(
                 name="DataRetrievalCondition",
                 description="Retrieve data if query analysis indicates it's needed",
                 evaluator=needs_data_retrieval,
-                steps=[data_retrieval_step],
+                steps=[
+                    retrieval_planning_step,  # LLM plans what to retrieve
+                    data_retrieval_step,      # Executor fetches raw data
+                ],
             ),
             debugging_step,
 

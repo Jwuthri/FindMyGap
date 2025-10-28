@@ -197,7 +197,7 @@ The demo script includes 5 test scenarios:
 
 ### Model
 - **Default**: `gpt-5-mini` (fast, cost-effective)
-- **Alternative**: Can be changed to `gpt-5` or `gpt-4o` for more complex reasoning
+- **Alternative**: Can be changed to `gpt-5` for more complex reasoning
 
 ## Key Features
 

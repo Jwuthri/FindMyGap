@@ -18,20 +18,20 @@ logger = get_logger("agno_event_streaming")
 # Define agents
 web_agent = Agent(
     name="Web Agent",
-    model=OpenAIChat(id="gpt-4o-mini", api_key=SETTINGS.OPENAI_API_KEY),
+    model=OpenAIChat(id="gpt-5-mini", api_key=SETTINGS.OPENAI_API_KEY),
     # tools=[DuckDuckGoTools()],
     role="Search the web for the latest news and trends",
 )
 hackernews_agent = Agent(
     name="Hackernews Agent",
-    model=OpenAIChat(id="gpt-4o-mini", api_key=SETTINGS.OPENAI_API_KEY),
+    model=OpenAIChat(id="gpt-5-mini", api_key=SETTINGS.OPENAI_API_KEY),
     tools=[HackerNewsTools()],
     role="Extract key insights and content from Hackernews posts",
 )
 
 writer_agent = Agent(
     name="Writer Agent",
-    model=OpenAIChat(id="gpt-4o-mini", api_key=SETTINGS.OPENAI_API_KEY),
+    model=OpenAIChat(id="gpt-5-mini", api_key=SETTINGS.OPENAI_API_KEY),
     instructions="Write a blog post on the topic",
 )
 
