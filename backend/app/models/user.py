@@ -18,7 +18,7 @@ class UserStatusEnum(str, Enum):
 
 class UserSchema(BaseModel):
     """User profile response model."""
-    id: str = Field(..., description="User ID (UUID)")
+    id: int = Field(..., description="User ID")
     email: Optional[str] = Field(None, description="Email address")
     username: Optional[str] = Field(None, description="Username")
     full_name: Optional[str] = Field(None, description="Full name")

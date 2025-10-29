@@ -2,11 +2,18 @@
 Database repositories package for FindMyGap.
 """
 
-from .user import UserRepository
 from .base_async import AsyncBaseRepository
+from .company import CompanyRepository
+from .dataset import PlatformDatasetRepository, UserDatasetRepository
+from .review import ReviewRepository
+from .user import UserRepository
 
 __all__ = [
     # Repositories
     "UserRepository",
+    "CompanyRepository",
+    "UserDatasetRepository",
+    "PlatformDatasetRepository",
+    "ReviewRepository",
     "AsyncBaseRepository",
 ]

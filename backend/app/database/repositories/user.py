@@ -10,14 +10,17 @@ from sqlalchemy.orm import Session
 from app import get_logger
 from app.database.models.user import UserTable
 
-logger = get_logger("user_repository")
+logger = get_logger(__name__)
 
 
 class UserRepository:
     """Repository for User model operations."""
 
-    @staticmethod
-    def create(db: Session, email: str, username: str = None, full_name: str = None, **kwargs) -> UserTable:
+    def _log_prefix(self, user_id: Optional[str] = None, company_id: Optional[str] = None) -> str:
+        """Generate log prefix following team standards."""
+        return f"[UserRepository] | [user_id={user_id or 'None'}] | [company_id={company_id or 'None'}]"
+
+    def create(self, db: Session, email: str, username: str = None, full_name: str = None, **kwargs) -> UserTable:
         """Create a new user."""
         user = UserTable(
             email=email,
@@ -28,33 +31,28 @@ class UserRepository:
         db.add(user)
         db.commit()
         db.refresh(user)
-        logger.info(f"Created user: {user.id}")
+        logger.info(f"{self._log_prefix(user.id)} | Created user with email: {email}")
         return user
 
-    @staticmethod
-    def get_by_id(db: Session, user_id: str) -> Optional[UserTable]:
+    def get_by_id(self, db: Session, user_id: int) -> Optional[UserTable]:
         """Get user by ID."""
         return db.query(UserTable).filter(UserTable.id == user_id).first()
 
-    @staticmethod
-    def get_by_email(db: Session, email: str) -> Optional[UserTable]:
+    def get_by_email(self, db: Session, email: str) -> Optional[UserTable]:
         """Get user by email."""
         return db.query(UserTable).filter(UserTable.email == email).first()
 
-    @staticmethod
-    def get_by_username(db: Session, username: str) -> Optional[UserTable]:
+    def get_by_username(self, db: Session, username: str) -> Optional[UserTable]:
         """Get user by username."""
         return db.query(UserTable).filter(UserTable.username == username).first()
 
-    @staticmethod
-    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[UserTable]:
+    def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[UserTable]:
         """Get all users with pagination."""
         return db.query(UserTable).offset(skip).limit(limit).all()
 
-    @staticmethod
-    def update(db: Session, user_id: str, **kwargs) -> Optional[UserTable]:
+    def update(self, db: Session, user_id: int, **kwargs) -> Optional[UserTable]:
         """Update user."""
-        user = UserRepository.get_by_id(db, user_id)
+        user = self.get_by_id(db, user_id)
         if not user:
             return None
 
@@ -65,42 +63,40 @@ class UserRepository:
         user.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(user)
+        logger.info(f"{self._log_prefix(user_id)} | Updated user")
         return user
 
-    @staticmethod
-    def delete(db: Session, user_id: str) -> bool:
+    def delete(self, db: Session, user_id: int) -> bool:
         """Delete user by ID."""
-        user = UserRepository.get_by_id(db, user_id)
+        user = self.get_by_id(db, user_id)
         if user:
             db.delete(user)
             db.commit()
-            logger.info(f"Deleted user: {user_id}")
+            logger.info(f"{self._log_prefix(user_id)} | Deleted user")
             return True
         return False
 
-    @staticmethod
-    def increment_usage(db: Session, user_id: str, requests: int = 1, tokens: int = 0):
+    def increment_usage(self, db: Session, user_id: int, requests: int = 1, tokens: int = 0):
         """Increment user usage counters."""
-        user = UserRepository.get_by_id(db, user_id)
+        user = self.get_by_id(db, user_id)
         if user:
             user.total_requests += requests
             user.total_tokens_used += tokens
             user.updated_at = datetime.utcnow()
             db.commit()
 
-    @staticmethod
-    def update_last_login(db: Session, user_id: str) -> Optional[UserTable]:
+    def update_last_login(self, db: Session, user_id: int) -> Optional[UserTable]:
         """Update user's last login timestamp."""
-        user = UserRepository.get_by_id(db, user_id)
+        user = self.get_by_id(db, user_id)
         if user:
             user.last_login_at = datetime.utcnow()
             user.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(user)
+            logger.info(f"{self._log_prefix(user_id)} | Updated last login")
         return user
 
-    @staticmethod
-    def search_users(db: Session, search_term: str, skip: int = 0, limit: int = 50) -> List[UserTable]:
+    def search_users(self, db: Session, search_term: str, skip: int = 0, limit: int = 50) -> List[UserTable]:
         """Search users by email, username or full name."""
         return (
             db.query(UserTable)

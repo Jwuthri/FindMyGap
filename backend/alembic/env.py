@@ -38,7 +38,7 @@ target_metadata = Base.metadata
 
 # Get database URL from settings
 settings = get_settings()
-database_url = settings.database_url
+database_url = settings.DATABASE_URL
 
 # Override the sqlalchemy.url in alembic.ini with the one from settings
 config.set_main_option("sqlalchemy.url", database_url)
@@ -79,7 +79,7 @@ def run_migrations_online() -> None:
     """
     # Create engine configuration
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = database_url
+    configuration["sqlalchemy.url"] = settings.DATABASE_URL
 
     connectable = engine_from_config(
         configuration,

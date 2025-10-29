@@ -3,7 +3,6 @@ User model for FindMyGap.
 """
 
 import enum
-import uuid
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime
@@ -25,17 +24,12 @@ class UserTable(Base):
     """User account model."""
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
     username = Column(String(100), unique=True, index=True, nullable=True)
     full_name = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=True)
     status = Column(SQLEnum(UserStatusEnum), default=UserStatusEnum.ACTIVE)
-
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    last_login_at = Column(DateTime, nullable=True)
 
     # User preferences and metadata
     preferences = Column(JSON, default={})
@@ -45,9 +39,10 @@ class UserTable(Base):
     total_requests = Column(Integer, default=0)
     total_tokens_used = Column(Integer, default=0)
 
-    # Relationships
-    # chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
-    # completions = relationship("Completion", back_populates="user", cascade="all, delete-orphan")
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_login_at = Column(DateTime, nullable=True)
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email}, status={self.status})>"
