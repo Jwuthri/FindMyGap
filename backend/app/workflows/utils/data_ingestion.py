@@ -10,14 +10,18 @@ from app.workflows.agents.data_ingestion import (
     DataPreview,
     DatasetMetadata
 )
-from app.workflows.utils.schema_manager import register_user_dataset
+from app.workflows.utils.schema_manager import (
+    register_user_dataset,
+    get_user_dataset_names,
+    generate_unique_table_name
+)
 from app.workflows.mock_data import MOCK_REVIEWS, get_all_companies
 from app import get_logger
 
 logger = get_logger("workflows.utils.data_ingestion")
 
 
-def sanitize_table_name(name: str, user_id: str) -> str:
+def sanitize_table_name(name: str, user_id: str, use_filename: bool = True) -> str:
     """
     Create a safe, unique table name from user input.
     
@@ -28,6 +32,7 @@ def sanitize_table_name(name: str, user_id: str) -> str:
     Args:
         name: Original name (from filename or user input)
         user_id: User ID to prefix (ensures uniqueness)
+        use_filename: If True, use the filename as-is (for CSV files)
         
     Returns:
         Safe, unique table name
@@ -143,9 +148,23 @@ async def ingest_data_file(
     # 2. Analyze the data
     preview = analyze_dataframe(df, filename)
     
-    # 3. Use LLM agent to generate metadata
+    # 3. Get existing user datasets to avoid duplicates
+    existing_datasets = get_user_dataset_names(db_path, user_id)
+    logger.info(f"User has {len(existing_datasets)} existing datasets: {existing_datasets}")
+    
+    # 4. Use LLM agent to generate metadata
     logger.info("Generating metadata with LLM agent...")
     ingestion_agent = create_data_ingestion_agent(model)
+    
+    existing_info = ""
+    if existing_datasets:
+        existing_info = f"""
+
+IMPORTANT: This user already has the following datasets:
+{', '.join(existing_datasets)}
+
+Please ensure the collection_name you suggest is different from these existing datasets.
+If this appears to be similar data, suggest a descriptive variation (e.g., 'conversations_2', 'sales_data_q4', etc.)."""
     
     prompt = f"""Analyze this uploaded dataset and generate comprehensive metadata.
 
@@ -161,6 +180,7 @@ Sample Data (first few rows):
 Statistics:
 - Null counts: {json.dumps(preview.null_counts, indent=2) if preview.null_counts else 'N/A'}
 - Unique values: {json.dumps(preview.unique_counts, indent=2) if preview.unique_counts else 'N/A'}
+{existing_info}
 
 Generate metadata for this dataset."""
 
@@ -173,10 +193,21 @@ Generate metadata for this dataset."""
         logger.error(f"Metadata generation failed: {e}")
         return {"success": False, "error": f"Metadata generation failed: {e}"}
     
-    # 4. Create table name
-    final_table_name = table_name or sanitize_table_name(metadata.collection_name, user_id)
+    # 5. Create table name - use CSV filename for CSV files, otherwise use LLM suggestion
+    if table_name:
+        # User provided custom name
+        base_table_name = sanitize_table_name(table_name, user_id)
+    elif file_ext == '.csv':
+        # For CSV files, use the filename
+        base_table_name = sanitize_table_name(filename, user_id)
+    else:
+        # For other formats, use LLM suggestion
+        base_table_name = sanitize_table_name(metadata.collection_name, user_id)
     
-    # 5. Insert data into SQLite
+    # Ensure uniqueness by appending number if needed
+    final_table_name = generate_unique_table_name(db_path, base_table_name, user_id)
+    
+    # 6. Insert data into SQLite
     try:
         conn = sqlite3.connect(db_path)
         df.to_sql(final_table_name, conn, if_exists="replace", index=False)
@@ -186,7 +217,7 @@ Generate metadata for this dataset."""
         logger.error(f"Database insertion failed: {e}")
         return {"success": False, "error": f"Database insertion failed: {e}"}
     
-    # 6. Register in metadata system
+    # 7. Register in metadata system
     column_metadata = json.dumps({
         "field_descriptions": metadata.field_descriptions,
         "key_fields": metadata.key_fields,
@@ -210,7 +241,7 @@ Generate metadata for this dataset."""
     if not success:
         return {"success": False, "error": "Failed to register dataset"}
     
-    # 7. Return results
+    # 8. Return results
     return {
         "success": True,
         "table_name": final_table_name,

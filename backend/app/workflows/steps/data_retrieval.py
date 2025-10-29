@@ -31,7 +31,7 @@ def execute_sql_query(db_connection: sqlite3.Connection, query: str) -> list[dic
     return results
 
 
-def execute_data_retrieval(step_input: StepInput, db_path: str = "tmp/product_gap_workflow.db") -> StepOutput:
+def execute_data_retrieval(step_input: StepInput, db_path: str = "memory.db") -> StepOutput:
     """
     Execute SQL queries from the retrieval plan and return raw data.
     This function does NOT use an LLM - it directly executes SQL queries.

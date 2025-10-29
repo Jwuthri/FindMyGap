@@ -92,6 +92,30 @@ def init_platform_metadata_table(db_path: str):
     logger.info(f"Platform metadata table initialized in {db_path}")
 
 
+def init_user_table(db_path: str):
+    """
+    Initialize the users table.
+    This tracks user information and authentication.
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL UNIQUE,
+            email TEXT,
+            username TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+    logger.info(f"Users table initialized in {db_path}")
+
+
 # ============================================================================
 # SCHEMA FETCHING
 # ============================================================================
@@ -147,6 +171,102 @@ def get_user_datasets(db_path: str, user_id: str) -> list[dict[str, Any]]:
     
     conn.close()
     return datasets
+
+
+def get_user_dataset_names(db_path: str, user_id: str) -> list[str]:
+    """
+    Get list of dataset names for a user (without user_id prefix).
+    
+    This extracts the table names and removes the 'user_{user_id}_' prefix
+    to show clean dataset names.
+    
+    Args:
+        db_path: Path to SQLite database
+        user_id: User ID
+        
+    Returns:
+        List of dataset names without prefix (e.g., ['conversations', 'sales_data'])
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT table_name
+        FROM user_datasets
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    """, (user_id,))
+    
+    prefix = f"user_{user_id}_"
+    dataset_names = []
+    
+    for row in cursor.fetchall():
+        table_name = row[0]
+        # Remove the user prefix
+        if table_name.startswith(prefix):
+            clean_name = table_name[len(prefix):]
+            dataset_names.append(clean_name)
+        else:
+            dataset_names.append(table_name)
+    
+    conn.close()
+    return dataset_names
+
+
+def check_table_exists(db_path: str, table_name: str) -> bool:
+    """
+    Check if a table exists in the database.
+    
+    Args:
+        db_path: Path to SQLite database
+        table_name: Name of the table to check
+        
+    Returns:
+        True if table exists, False otherwise
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name=?
+    """, (table_name,))
+    
+    exists = cursor.fetchone() is not None
+    conn.close()
+    
+    return exists
+
+
+def generate_unique_table_name(db_path: str, base_name: str, user_id: str) -> str:
+    """
+    Generate a unique table name by appending a number if needed.
+    
+    Args:
+        db_path: Path to SQLite database
+        base_name: Base table name (e.g., 'user_123_conversations')
+        user_id: User ID (for logging)
+        
+    Returns:
+        Unique table name (e.g., 'user_123_conversations_2' if original exists)
+    """
+    if not check_table_exists(db_path, base_name):
+        return base_name
+    
+    # Table exists, find next available number
+    counter = 2
+    while True:
+        new_name = f"{base_name}_{counter}"
+        if not check_table_exists(db_path, new_name):
+            logger.info(f"Table {base_name} exists, using {new_name}")
+            return new_name
+        counter += 1
+        
+        # Safety check to avoid infinite loop
+        if counter > 100:
+            raise ValueError(f"Too many tables with base name {base_name}")
+    
+    return base_name
 
 
 # ============================================================================
@@ -424,3 +544,7 @@ def get_platform_dataset_metadata(db_path: str, table_name: str) -> dict[str, An
     except Exception as e:
         logger.error(f"Failed to get platform dataset metadata: {e}")
         return None
+
+
+if __name__ == "__main__":
+    init_user_table("/Users/julienwuthrich/GitHub/findmygap/backend/memory.db")

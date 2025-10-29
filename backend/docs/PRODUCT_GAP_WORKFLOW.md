@@ -191,7 +191,7 @@ The demo script includes 5 test scenarios:
 ## Configuration
 
 ### Database
-- **Location**: `tmp/product_gap_workflow.db`
+- **Location**: `memory.db`
 - **Table**: `product_gap_workflow_session`
 - **Purpose**: Persist workflow sessions and enable resume
 

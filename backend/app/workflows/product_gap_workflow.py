@@ -99,7 +99,7 @@ def send_to_data_nlp(step_input: StepInput) -> StepOutput:
 # WORKFLOW CREATION
 # ============================================================================
 
-def create_product_gap_workflow(db_file: str = "tmp/product_gap_workflow.db", user_id: str | None = None) -> Workflow:
+def create_product_gap_workflow(db_file: str = "memory.db", user_id: str | None = None) -> Workflow:
     """
     Create the Product Gap Detection Workflow with conditional execution.
     

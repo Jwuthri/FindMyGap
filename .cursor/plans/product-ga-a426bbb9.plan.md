@@ -91,7 +91,7 @@ Use `agno.workflow.workflow.Workflow` with:
 4. Output Format Detection (always)
 5. Answer Writer Team (always)
 
-- **Persistence**: SqliteDb at `tmp/product_gap_workflow.db`
+- **Persistence**: SqliteDb at `memory.db`
 - **Streaming**: Enable with `stream=True`, `stream_intermediate_steps=True`
 - **Conditions**: Check Query Analyzer output to skip/run conditional steps
 

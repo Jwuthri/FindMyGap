@@ -29,7 +29,7 @@ async def main():
     """Example data ingestion flow"""
     
     # Setup
-    db_path = "/Users/julienwuthrich/GitHub/findmygap/tmp/product_gap_workflow.db"
+    db_path = "/Users/julienwuthrich/GitHub/findmygap/backend/memory.db"
     user_id = "user_123"
     model = OpenAIChat(id="gpt-5-nano", api_key=SETTINGS.OPENAI_API_KEY)
     
@@ -72,24 +72,132 @@ async def main():
         
         import pandas as pd
         sample_data = pd.DataFrame({
-            'conversation_id': ['conv_001', 'conv_001', 'conv_002', 'conv_002', 'conv_003'],
-            'message_index': [1, 2, 1, 2, 1],
-            'author': ['customer', 'agent', 'customer', 'agent', 'customer'],
-            'content': [
-                'My product is not working properly',
-                'Sorry to hear that. Can you describe the issue?',
-                'I need a refund for my order',
-                'I can help you with that. What is your order number?',
-                'How do I track my shipment?'
+            'feature_id': ['FEAT-001', 'FEAT-002', 'FEAT-003', 'FEAT-004', 'FEAT-005', 'FEAT-006', 'FEAT-007', 'FEAT-008', 'FEAT-009', 'FEAT-010',
+                          'FEAT-011', 'FEAT-012', 'FEAT-013', 'FEAT-014', 'FEAT-015', 'FEAT-016', 'FEAT-017', 'FEAT-018', 'FEAT-019', 'FEAT-020',
+                          'FEAT-021', 'FEAT-022', 'FEAT-023', 'FEAT-024', 'FEAT-025', 'FEAT-026', 'FEAT-027', 'FEAT-028', 'FEAT-029', 'FEAT-030',
+                          'FEAT-031', 'FEAT-032', 'FEAT-033', 'FEAT-034', 'FEAT-035', 'FEAT-036', 'FEAT-037', 'FEAT-038', 'FEAT-039', 'FEAT-040'],
+            'feature_name': [
+                'AI-Powered Auto-Complete', 'Advanced Table Filtering', 'Custom API Rate Limits', 'Dark Mode Improvements', 'Database Relations V2',
+                'Email Integration', 'Formula Builder UI', 'Google Calendar Sync', 'Inline Comments', 'Kanban Board Templates',
+                'Live Collaboration Cursors', 'Mobile Offline Mode', 'Notion Charts', 'Page Analytics', 'PDF Export Enhancement',
+                'Real-time Notifications', 'Slack Integration V2', 'Table Grouping', 'Timeline View', 'Version History Search',
+                'Web Clipper Extension', 'Workspace Permissions', 'Zapier Integration', 'Advanced Search Filters', 'Block Templates',
+                'Calendar View Filters', 'Database Rollups', 'Export to Markdown', 'Formula Autocomplete', 'Gallery View Customization',
+                'Import from Confluence', 'Keyboard Shortcuts Panel', 'Link Preview Cards', 'Multi-Select Properties', 'Nested Databases',
+                'Page Cover Videos', 'Quick Capture Widget', 'Recurring Tasks', 'Sidebar Customization', 'Table of Contents Auto-Update'
             ],
-            'timestamp': [
-                '2024-01-15 10:30:00',
-                '2024-01-15 10:35:00',
-                '2024-01-15 11:00:00',
-                '2024-01-15 11:05:00',
-                '2024-01-16 09:15:00'
+            'category': [
+                'AI/ML', 'Database', 'API', 'UI/UX', 'Database',
+                'Integration', 'Database', 'Integration', 'Collaboration', 'Templates',
+                'Collaboration', 'Mobile', 'Visualization', 'Analytics', 'Export',
+                'Notifications', 'Integration', 'Database', 'Visualization', 'Core',
+                'Integration', 'Security', 'Integration', 'Search', 'Templates',
+                'Visualization', 'Database', 'Export', 'Database', 'Visualization',
+                'Import', 'UI/UX', 'Core', 'Database', 'Database',
+                'UI/UX', 'Mobile', 'Tasks', 'UI/UX', 'Core'
             ],
-            'subject': ['Product Issue', 'Product Issue', 'Refund Request', 'Refund Request', 'Shipping Question']
+            'status': [
+                'In Development', 'Shipped', 'Planning', 'Shipped', 'In Development',
+                'Planning', 'In Development', 'Shipped', 'Shipped', 'Shipped',
+                'Shipped', 'In Development', 'Beta', 'Planning', 'Shipped',
+                'Shipped', 'In Development', 'Beta', 'Shipped', 'Shipped',
+                'Shipped', 'In Development', 'Shipped', 'Planning', 'Shipped',
+                'Beta', 'Shipped', 'Shipped', 'In Development', 'Beta',
+                'Planning', 'Shipped', 'Shipped', 'Shipped', 'Planning',
+                'Beta', 'Planning', 'In Development', 'Shipped', 'In Development'
+            ],
+            'priority': [
+                'High', 'Medium', 'Low', 'Medium', 'High',
+                'Medium', 'High', 'Medium', 'High', 'Low',
+                'High', 'High', 'Medium', 'Low', 'Medium',
+                'High', 'Medium', 'High', 'Medium', 'Medium',
+                'Medium', 'High', 'Low', 'Medium', 'Low',
+                'Medium', 'Medium', 'Low', 'High', 'Low',
+                'Medium', 'Low', 'Medium', 'Medium', 'High',
+                'Low', 'Medium', 'High', 'Medium', 'Medium'
+            ],
+            'team': [
+                'AI Team', 'Database Team', 'Platform Team', 'Design Team', 'Database Team',
+                'Integrations Team', 'Database Team', 'Integrations Team', 'Collaboration Team', 'Templates Team',
+                'Collaboration Team', 'Mobile Team', 'Visualization Team', 'Analytics Team', 'Export Team',
+                'Platform Team', 'Integrations Team', 'Database Team', 'Visualization Team', 'Core Team',
+                'Integrations Team', 'Security Team', 'Integrations Team', 'Search Team', 'Templates Team',
+                'Visualization Team', 'Database Team', 'Export Team', 'Database Team', 'Visualization Team',
+                'Import Team', 'Design Team', 'Core Team', 'Database Team', 'Database Team',
+                'Design Team', 'Mobile Team', 'Tasks Team', 'Design Team', 'Core Team'
+            ],
+            'user_requests': [
+                1247, 892, 156, 2341, 1089,
+                734, 945, 1523, 2876, 445,
+                3421, 2156, 1678, 289, 1834,
+                2945, 1234, 1567, 1923, 1456,
+                1789, 1345, 678, 823, 567,
+                934, 1245, 456, 1123, 389,
+                512, 789, 1678, 1456, 923,
+                234, 645, 2134, 1567, 1089
+            ],
+            'estimated_effort': [
+                'Large', 'Medium', 'Small', 'Small', 'Large',
+                'Medium', 'Medium', 'Medium', 'Small', 'Small',
+                'Medium', 'Large', 'Large', 'Medium', 'Small',
+                'Medium', 'Medium', 'Large', 'Medium', 'Medium',
+                'Small', 'Large', 'Small', 'Medium', 'Small',
+                'Medium', 'Medium', 'Small', 'Medium', 'Small',
+                'Medium', 'Small', 'Small', 'Small', 'Large',
+                'Small', 'Medium', 'Medium', 'Medium', 'Small'
+            ],
+            'target_quarter': [
+                'Q1 2025', 'Q4 2024', 'Q2 2025', 'Q4 2024', 'Q1 2025',
+                'Q2 2025', 'Q1 2025', 'Q4 2024', 'Q3 2024', 'Q3 2024',
+                'Q3 2024', 'Q1 2025', 'Q4 2024', 'Q2 2025', 'Q3 2024',
+                'Q3 2024', 'Q1 2025', 'Q4 2024', 'Q3 2024', 'Q3 2024',
+                'Q2 2024', 'Q1 2025', 'Q2 2024', 'Q2 2025', 'Q2 2024',
+                'Q4 2024', 'Q2 2024', 'Q2 2024', 'Q1 2025', 'Q4 2024',
+                'Q2 2025', 'Q1 2024', 'Q2 2024', 'Q2 2024', 'Q2 2025',
+                'Q4 2024', 'Q2 2025', 'Q1 2025', 'Q3 2024', 'Q1 2025'
+            ],
+            'description': [
+                'Implement AI-powered suggestions for completing sentences and blocks based on context and user patterns',
+                'Add advanced filtering capabilities to database tables including multiple conditions and saved filter sets',
+                'Allow enterprise customers to configure custom rate limits for API usage based on their needs',
+                'Enhance dark mode with better contrast ratios and support for custom color schemes',
+                'Redesign database relations system to support many-to-many relationships and circular references',
+                'Native email integration allowing users to send and receive emails directly within Notion pages',
+                'Visual formula builder with drag-and-drop interface for creating complex database formulas',
+                'Two-way sync with Google Calendar for seamless event management and scheduling',
+                'Enable inline commenting on specific text selections for better collaboration and feedback',
+                'Pre-built Kanban board templates for common workflows like sprint planning and content calendars',
+                'Show real-time cursor positions of collaborators editing the same page',
+                'Full offline functionality for mobile apps with automatic sync when connection is restored',
+                'Native charting capabilities for visualizing database data with various chart types',
+                'Analytics dashboard showing page views, edit history, and collaboration metrics',
+                'Improved PDF export with better formatting, custom page sizes, and embedded media support',
+                'Real-time push notifications for mentions, comments, and page updates across all devices',
+                'Enhanced Slack integration with better formatting, thread support, and bidirectional sync',
+                'Group table rows by property values with collapsible sections and aggregate functions',
+                'Timeline view for databases to visualize date-based data in a Gantt-chart style layout',
+                'Search through page version history to find and restore specific past versions',
+                'Browser extension for clipping web content directly into Notion with formatting preserved',
+                'Granular workspace permissions with role-based access control and custom permission sets',
+                'Native Zapier integration for connecting Notion with thousands of other apps and services',
+                'Advanced search with filters for date ranges, authors, page types, and custom properties',
+                'Reusable block templates that can be inserted quickly with predefined content and structure',
+                'Filter calendar views by database properties to show only relevant events',
+                'Database rollup properties that aggregate data from related databases',
+                'Export pages and databases to Markdown format with proper formatting and links',
+                'Autocomplete suggestions for formula functions with inline documentation',
+                'Customize gallery view card layouts with custom property display and sizing options',
+                'Import tool for migrating content from Confluence with preserved formatting and structure',
+                'Searchable keyboard shortcuts panel with customization options',
+                'Rich link preview cards showing metadata, images, and descriptions for external URLs',
+                'Multi-select property type for databases allowing multiple values per field',
+                'Support for creating databases within database items for hierarchical data structures',
+                'Support for video files as page cover images with autoplay and loop options',
+                'Quick capture widget for mobile devices to rapidly add notes and tasks',
+                'Recurring task functionality with flexible scheduling options and automatic creation',
+                'Customize sidebar layout with collapsible sections, custom ordering, and favorites',
+                'Automatically update table of contents blocks when page structure changes'
+            ]
         })
         
         Path("tmp").mkdir(exist_ok=True)
