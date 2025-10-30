@@ -7,6 +7,7 @@ from .company import CompanyRepository
 from .dataset import PlatformDatasetRepository, UserDatasetRepository
 from .review import ReviewRepository
 from .user import UserRepository
+from .user_review_feedback import UserReviewFeedbackRepository
 
 __all__ = [
     # Repositories
@@ -15,5 +16,6 @@ __all__ = [
     "UserDatasetRepository",
     "PlatformDatasetRepository",
     "ReviewRepository",
+    "UserReviewFeedbackRepository",
     "AsyncBaseRepository",
 ]

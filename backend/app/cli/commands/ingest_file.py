@@ -10,7 +10,7 @@ from app.workflows.utils.data_ingestion_refactored import DataIngestionService
 logger = get_logger(__name__)
 
 
-async def ingest_data_file(file_path: str, user_id: str):
+async def ingest_data_file(file_path: str, user_id: int):
     """Ingest a data file."""
     
     logger.info(f"Ingesting file: {file_path} for user: {user_id}")

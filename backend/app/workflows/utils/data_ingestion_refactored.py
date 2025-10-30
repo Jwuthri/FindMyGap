@@ -46,22 +46,23 @@ class DataIngestionService:
         self.user_dataset_repo = UserDatasetRepository()
         self.platform_dataset_repo = PlatformDatasetRepository()
 
-    def _log_prefix(self, user_id: Optional[str] = None, company_id: Optional[str] = None) -> str:
+    def _log_prefix(self, user_id: Optional[int] = None, company_id: Optional[int] = None) -> str:
         """Generate log prefix following team standards."""
         return f"[DataIngestionService] | [user_id={user_id or 'None'}] | [company_id={company_id or 'None'}]"
 
-    def sanitize_table_name(self, name: str, user_id: str) -> str:
+    def sanitize_table_name(self, name: str, user_id: int) -> str:
         """
         Create a safe, unique table name from user input.
         
-        Prefixes with user_id to ensure uniqueness across users.
+        Prefixes with __user_{id}_ to ensure uniqueness across users.
+        The double underscore prefix makes it easier to identify user tables.
         
         Args:
             name: Original name (from filename or user input)
             user_id: User ID to prefix
             
         Returns:
-            Safe, unique table name
+            Safe, unique table name with __user_{id}_ prefix
         """
         # Remove file extension
         name = Path(name).stem
@@ -72,8 +73,8 @@ class DataIngestionService:
         # Remove special characters
         name = ''.join(c for c in name if c.isalnum() or c == '_')
         
-        # Prefix with user_id
-        return f"user_{user_id}_{name}"
+        # Prefix with __user_{id}_ for easy identification
+        return f"__user_{user_id}_{name}"
 
     def analyze_dataframe(self, df: pd.DataFrame, filename: str) -> DataPreview:
         """
@@ -120,7 +121,7 @@ class DataIngestionService:
             unique_counts=unique_counts
         )
 
-    def generate_unique_table_name(self, base_name: str, user_id: str) -> str:
+    def generate_unique_table_name(self, base_name: str, user_id: int) -> str:
         """
         Generate a unique table name by appending a number if needed.
         
@@ -149,7 +150,7 @@ class DataIngestionService:
     async def ingest_data_file(
         self,
         file_path: str,
-        user_id: str,
+        user_id: int,
         model: OpenAIChat,
         table_name: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -300,42 +301,48 @@ Generate metadata for this dataset."""
         logger.info(f"{self._log_prefix()} | Starting mock review ingestion")
         
         try:
-            # Collect all reviews from all companies
-            all_reviews = []
+            from app.database.repositories.company import CompanyRepository
+            from app.database.repositories.review import ReviewRepository
+            
+            company_repo = CompanyRepository()
+            review_repo = ReviewRepository()
+            
             companies = get_all_companies()
+            total_reviews = 0
+            company_counts = {}
             
-            for company in companies:
-                company_reviews = MOCK_REVIEWS[company]
-                for review in company_reviews:
-                    review_with_company = review.copy()
-                    review_with_company['company'] = company
-                    all_reviews.append(review_with_company)
+            for company_name in companies:
+                # Get or create company
+                company = company_repo.get_or_create(self.db, name=company_name)
+                company_counts[company_name] = 0
+                
+                # Get reviews for this company
+                company_reviews = MOCK_REVIEWS[company_name]
+                
+                for review_data in company_reviews:
+                    # Create review with company_id
+                    review_repo.create(
+                        db=self.db,
+                        company_id=company.id,
+                        text=review_data['text'],
+                        rating=review_data.get('rating'),
+                        category=review_data.get('category'),
+                        source=review_data.get('source'),
+                        date=review_data.get('date'),
+                        author=review_data.get('author')
+                    )
+                    total_reviews += 1
+                    company_counts[company_name] += 1
             
-            logger.info(f"{self._log_prefix()} | Collected {len(all_reviews)} reviews from {len(companies)} companies")
-            
-            # Convert to DataFrame
-            df = pd.DataFrame(all_reviews)
-            df = df[['id', 'company', "category", 'rating', 'text', 'source', 'date', 'author']]
-            
-            # Insert using SQLAlchemy
-            df.to_sql('reviews_feedback', self.db.bind, if_exists='replace', index=False)
-            
-            # Verify insertion
-            result = self.db.execute(text("SELECT COUNT(*) FROM reviews_feedback"))
-            row_count = result.scalar()
-            
-            result = self.db.execute(text("SELECT company, COUNT(*) FROM reviews_feedback GROUP BY company"))
-            company_counts = dict(result.fetchall())
-            
-            logger.info(f"{self._log_prefix()} | Successfully ingested {row_count} reviews into 'reviews_feedback' table")
+            logger.info(f"{self._log_prefix()} | Successfully ingested {total_reviews} reviews into 'reviews_feedback' table")
             
             return {
                 "success": True,
                 "table_name": "reviews_feedback",
-                "total_rows": row_count,
+                "total_rows": total_reviews,
                 "companies": list(company_counts.keys()),
                 "company_counts": company_counts,
-                "message": f"Successfully ingested {row_count} reviews from {len(companies)} companies"
+                "message": f"Successfully ingested {total_reviews} reviews from {len(companies)} companies"
             }
             
         except Exception as e:

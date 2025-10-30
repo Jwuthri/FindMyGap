@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 
 # Mock review database
 MOCK_REVIEWS = {
-    "spotify": [
+    "Spotify": [
         {"id": 1, "category": "review", "rating": 2, "text": "Missing lyrics sync feature that Apple Music has. Would pay extra for this.", "source": "app_store", "date": "2025-10-15", "author": "user123"},
         {"id": 2, "category": "review", "rating": 5, "text": "Best music app ever! Love the AI DJ feature.", "source": "app_store", "date": "2025-10-14", "author": "musicfan"},
         {"id": 3, "category": "review", "rating": 3, "text": "Good but needs better podcast discovery. I can't find niche podcasts easily.", "source": "reddit", "date": "2025-10-13", "author": "podcastlover"},
@@ -62,7 +62,7 @@ MOCK_REVIEWS = {
         {"id": 79, "category": "review", "rating": 4, "text": "The daily drive playlist is a great mix of news and music.", "source": "app_store", "date": "2025-08-24", "author": "daily_driver"},
         {"id": 80, "category": "review", "rating": 1, "text": "Premium subscription is too expensive for the features offered.", "source": "trustpilot", "date": "2025-08-23", "author": "expensive_premium"},
     ],
-    "notion": [
+    "Notion": [
         {"id": 16, "category": "review", "rating": 2, "text": "Mobile app is painfully slow. Takes 5 seconds to open a page.", "source": "app_store", "date": "2025-10-15", "author": "mobile_user"},
         {"id": 17, "category": "review", "rating": 5, "text": "Best note-taking app! So flexible and powerful.", "source": "app_store", "date": "2025-10-14", "author": "power_user"},
         {"id": 18, "category": "review", "rating": 3, "text": "Offline mode is terrible. Can't access anything without internet.", "source": "reddit", "date": "2025-10-13", "author": "traveler"},
@@ -113,7 +113,7 @@ MOCK_REVIEWS = {
         {"id": 119, "category": "review", "rating": 4, "text": "The ability to customize icons and covers makes pages feel personal.", "source": "app_store", "date": "2025-08-21", "author": "customization_lover"},
         {"id": 120, "category": "review", "rating": 1, "text": "Offline access is still a major pain point, frequently fails to load content.", "source": "trustpilot", "date": "2025-08-20", "author": "offline_again"},
     ],
-    "slack": [
+    "Slack": [
         {"id": 26, "category": "review", "rating": 2, "text": "Missing AI summarization of long threads. Would save so much time.", "source": "trustpilot", "date": "2025-10-15", "author": "busy_manager"},
         {"id": 27, "category": "review", "rating": 5, "text": "Best team communication tool. Can't imagine work without it.", "source": "app_store", "date": "2025-10-14", "author": "remote_worker"},
         {"id": 28, "category": "review", "rating": 3, "text": "Needs better video call quality. Zoom is much better.", "source": "reddit", "date": "2025-10-13", "author": "video_caller"},
@@ -153,7 +153,7 @@ MOCK_REVIEWS = {
         {"id": 149, "category": "review", "rating": 4, "text": "I appreciate the security features and admin controls.", "source": "app_store", "date": "2025-08-24", "author": "security_fan_slack"},
         {"id": 150, "category": "review", "rating": 1, "text": "The constant updates are disruptive and often introduce new bugs.", "source": "trustpilot", "date": "2025-08-23", "author": "update_hater_slack"},
     ],
-    "netflix": [
+    "Netflix": [
         {"id": 40, "category": "review", "rating": 3, "text": "Too many reboots and not enough original new content.", "source": "twitter", "date": "2025-10-15", "author": "old_school_viewer"},
         {"id": 41, "category": "review", "rating": 5, "text": "Love the variety of international shows and movies!", "source": "app_store", "date": "2025-10-14", "author": "world_cinema_fan"},
         {"id": 42, "category": "review", "rating": 2, "text": "The recommendation engine is terrible, always suggests things I don't like.", "source": "reddit", "date": "2025-10-13", "author": "picky_viewer"},
@@ -201,74 +201,3 @@ MOCK_REVIEWS = {
         {"id": 190, "category": "review", "rating": 3, "text": "The UI sometimes feels clunky and slow to respond.", "source": "reddit", "date": "2025-09-01", "author": "clunky_ui_netflix"},
     ]
 }
-
-
-def get_reviews(company: str, limit: int = 100) -> List[Dict[str, Any]]:
-    """
-    Get mock reviews for a company.
-    
-    Args:
-        company: Company name (lowercase)
-        limit: Maximum number of reviews
-    
-    Returns:
-        List of review dictionaries
-    """
-    company = company.lower()
-    if company not in MOCK_REVIEWS:
-        return []
-    
-    return MOCK_REVIEWS[company][:limit]
-
-
-def get_all_companies() -> List[str]:
-    """Get list of companies with mock reviews."""
-    return list(MOCK_REVIEWS.keys())
-
-
-def get_reviews_by_rating(company: str, min_rating: int = 1, max_rating: int = 5) -> List[Dict[str, Any]]:
-    """
-    Get reviews filtered by rating range.
-    
-    Args:
-        company: Company name
-        min_rating: Minimum rating (1-5)
-        max_rating: Maximum rating (1-5)
-    
-    Returns:
-        Filtered reviews
-    """
-    reviews = get_reviews(company)
-    return [r for r in reviews if min_rating <= r["category": "review", "rating"] <= max_rating]
-
-
-def get_reviews_by_source(company: str, source: str) -> List[Dict[str, Any]]:
-    """
-    Get reviews from specific source.
-    
-    Args:
-        company: Company name
-        source: Source name (app_store, reddit, trustpilot)
-    
-    Returns:
-        Filtered reviews
-    """
-    reviews = get_reviews(company)
-    return [r for r in reviews if r["source"] == source]
-
-
-def search_reviews(company: str, keyword: str) -> List[Dict[str, Any]]:
-    """
-    Search reviews by keyword.
-    
-    Args:
-        company: Company name
-        keyword: Search keyword
-    
-    Returns:
-        Matching reviews
-    """
-    reviews = get_reviews(company)
-    keyword_lower = keyword.lower()
-    return [r for r in reviews if keyword_lower in r["text"].lower()]
-

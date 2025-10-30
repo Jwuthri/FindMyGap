@@ -1,0 +1,41 @@
+feature_id,feature_name,category,status,priority,team,user_requests,estimated_effort,target_quarter,description
+FEAT-001,AI-Powered Auto-Complete,AI/ML,In Development,High,AI Team,1247,Large,Q1 2025,Implement AI-powered suggestions for completing sentences and blocks based on context and user patterns
+FEAT-002,Advanced Table Filtering,Database,Shipped,Medium,Database Team,892,Medium,Q4 2024,Add advanced filtering capabilities to database tables including multiple conditions and saved filter sets
+FEAT-003,Custom API Rate Limits,API,Planning,Low,Platform Team,156,Small,Q2 2025,Allow enterprise customers to configure custom rate limits for API usage based on their needs
+FEAT-004,Dark Mode Improvements,UI/UX,Shipped,Medium,Design Team,2341,Small,Q4 2024,Enhance dark mode with better contrast ratios and support for custom color schemes
+FEAT-005,Database Relations V2,Database,In Development,High,Database Team,1089,Large,Q1 2025,Redesign database relations system to support many-to-many relationships and circular references
+FEAT-006,Email Integration,Integration,Planning,Medium,Integrations Team,734,Medium,Q2 2025,Native email integration allowing users to send and receive emails directly within Notion pages
+FEAT-007,Formula Builder UI,Database,In Development,High,Database Team,945,Medium,Q1 2025,Visual formula builder with drag-and-drop interface for creating complex database formulas
+FEAT-008,Google Calendar Sync,Integration,Shipped,Medium,Integrations Team,1523,Medium,Q4 2024,Two-way sync with Google Calendar for seamless event management and scheduling
+FEAT-009,Inline Comments,Collaboration,Shipped,High,Collaboration Team,2876,Small,Q3 2024,Enable inline commenting on specific text selections for better collaboration and feedback
+FEAT-010,Kanban Board Templates,Templates,Shipped,Low,Templates Team,445,Small,Q3 2024,Pre-built Kanban board templates for common workflows like sprint planning and content calendars
+FEAT-011,Live Collaboration Cursors,Collaboration,Shipped,High,Collaboration Team,3421,Medium,Q3 2024,Show real-time cursor positions of collaborators editing the same page
+FEAT-012,Mobile Offline Mode,Mobile,In Development,High,Mobile Team,2156,Large,Q1 2025,Full offline functionality for mobile apps with automatic sync when connection is restored
+FEAT-013,Notion Charts,Visualization,Beta,Medium,Visualization Team,1678,Large,Q4 2024,Native charting capabilities for visualizing database data with various chart types
+FEAT-014,Page Analytics,Analytics,Planning,Low,Analytics Team,289,Medium,Q2 2025,"Analytics dashboard showing page views, edit history, and collaboration metrics"
+FEAT-015,PDF Export Enhancement,Export,Shipped,Medium,Export Team,1834,Small,Q3 2024,"Improved PDF export with better formatting, custom page sizes, and embedded media support"
+FEAT-016,Real-time Notifications,Notifications,Shipped,High,Platform Team,2945,Medium,Q3 2024,"Real-time push notifications for mentions, comments, and page updates across all devices"
+FEAT-017,Slack Integration V2,Integration,In Development,Medium,Integrations Team,1234,Medium,Q1 2025,"Enhanced Slack integration with better formatting, thread support, and bidirectional sync"
+FEAT-018,Table Grouping,Database,Beta,High,Database Team,1567,Large,Q4 2024,Group table rows by property values with collapsible sections and aggregate functions
+FEAT-019,Timeline View,Visualization,Shipped,Medium,Visualization Team,1923,Medium,Q3 2024,Timeline view for databases to visualize date-based data in a Gantt-chart style layout
+FEAT-020,Version History Search,Core,Shipped,Medium,Core Team,1456,Medium,Q3 2024,Search through page version history to find and restore specific past versions
+FEAT-021,Web Clipper Extension,Integration,Shipped,Medium,Integrations Team,1789,Small,Q2 2024,Browser extension for clipping web content directly into Notion with formatting preserved
+FEAT-022,Workspace Permissions,Security,In Development,High,Security Team,1345,Large,Q1 2025,Granular workspace permissions with role-based access control and custom permission sets
+FEAT-023,Zapier Integration,Integration,Shipped,Low,Integrations Team,678,Small,Q2 2024,Native Zapier integration for connecting Notion with thousands of other apps and services
+FEAT-024,Advanced Search Filters,Search,Planning,Medium,Search Team,823,Medium,Q2 2025,"Advanced search with filters for date ranges, authors, page types, and custom properties"
+FEAT-025,Block Templates,Templates,Shipped,Low,Templates Team,567,Small,Q2 2024,Reusable block templates that can be inserted quickly with predefined content and structure
+FEAT-026,Calendar View Filters,Visualization,Beta,Medium,Visualization Team,934,Medium,Q4 2024,Filter calendar views by database properties to show only relevant events
+FEAT-027,Database Rollups,Database,Shipped,Medium,Database Team,1245,Medium,Q2 2024,Database rollup properties that aggregate data from related databases
+FEAT-028,Export to Markdown,Export,Shipped,Low,Export Team,456,Small,Q2 2024,Export pages and databases to Markdown format with proper formatting and links
+FEAT-029,Formula Autocomplete,Database,In Development,High,Database Team,1123,Medium,Q1 2025,Autocomplete suggestions for formula functions with inline documentation
+FEAT-030,Gallery View Customization,Visualization,Beta,Low,Visualization Team,389,Small,Q4 2024,Customize gallery view card layouts with custom property display and sizing options
+FEAT-031,Import from Confluence,Import,Planning,Medium,Import Team,512,Medium,Q2 2025,Import tool for migrating content from Confluence with preserved formatting and structure
+FEAT-032,Keyboard Shortcuts Panel,UI/UX,Shipped,Low,Design Team,789,Small,Q1 2024,Searchable keyboard shortcuts panel with customization options
+FEAT-033,Link Preview Cards,Core,Shipped,Medium,Core Team,1678,Small,Q2 2024,"Rich link preview cards showing metadata, images, and descriptions for external URLs"
+FEAT-034,Multi-Select Properties,Database,Shipped,Medium,Database Team,1456,Small,Q2 2024,Multi-select property type for databases allowing multiple values per field
+FEAT-035,Nested Databases,Database,Planning,High,Database Team,923,Large,Q2 2025,Support for creating databases within database items for hierarchical data structures
+FEAT-036,Page Cover Videos,UI/UX,Beta,Low,Design Team,234,Small,Q4 2024,Support for video files as page cover images with autoplay and loop options
+FEAT-037,Quick Capture Widget,Mobile,Planning,Medium,Mobile Team,645,Medium,Q2 2025,Quick capture widget for mobile devices to rapidly add notes and tasks
+FEAT-038,Recurring Tasks,Tasks,In Development,High,Tasks Team,2134,Medium,Q1 2025,Recurring task functionality with flexible scheduling options and automatic creation
+FEAT-039,Sidebar Customization,UI/UX,Shipped,Medium,Design Team,1567,Medium,Q3 2024,"Customize sidebar layout with collapsible sections, custom ordering, and favorites"
+FEAT-040,Table of Contents Auto-Update,Core,In Development,Medium,Core Team,1089,Small,Q1 2025,Automatically update table of contents blocks when page structure changes

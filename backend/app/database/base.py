@@ -15,7 +15,7 @@ settings = get_settings()
 
 # Configure logging
 logging.basicConfig()
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 # Create Base class for declarative models (shared between sync and async)
 Base = declarative_base()
@@ -27,7 +27,7 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
-    echo=settings.ENV_STATE == "development"
+    echo=False
 )
 
 

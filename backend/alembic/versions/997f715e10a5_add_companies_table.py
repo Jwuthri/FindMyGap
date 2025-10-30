@@ -32,18 +32,25 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_companies_name'), 'companies', ['name'], unique=True)
     
-    # Add company_id to reviews_feedback and create foreign key
+    # Add company_id to reviews_feedback
     op.add_column('reviews_feedback', sa.Column('company_id', sa.Integer(), nullable=True))
+    
+    # Drop the old company column (string)
+    op.drop_column('reviews_feedback', 'company')
+    
+    # Create foreign key
     op.create_foreign_key('fk_reviews_company', 'reviews_feedback', 'companies', ['company_id'], ['id'])
     op.create_index(op.f('ix_reviews_feedback_company_id'), 'reviews_feedback', ['company_id'], unique=False)
-    
-    # Migrate existing company names to companies table and update foreign keys
-    # This will be done in a data migration script
 
 
 def downgrade() -> None:
     op.drop_index(op.f('ix_reviews_feedback_company_id'), table_name='reviews_feedback')
     op.drop_constraint('fk_reviews_company', 'reviews_feedback', type_='foreignkey')
+    
+    # Add back the old company column
+    op.add_column('reviews_feedback', sa.Column('company', sa.String(), nullable=False))
+    
+    # Drop company_id
     op.drop_column('reviews_feedback', 'company_id')
     
     op.drop_index(op.f('ix_companies_name'), table_name='companies')
