@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import jwt
 from app.config import Settings, get_settings
 from app.database.repositories import UserRepository
-from app.exceptions import UnauthorizedError, ValidationError
+from app.core.exceptions import UnauthorizedError, ValidationError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 

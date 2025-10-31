@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager, contextmanager
 from functools import wraps
 from typing import Any, AsyncGenerator, Callable, Generator, TypeVar
 
-from app.exceptions import DatabaseError
+from app.core.exceptions import DatabaseError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 

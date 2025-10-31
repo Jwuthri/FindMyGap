@@ -85,6 +85,22 @@ This standard ensures consistent, traceable logging across the entire backend ap
 - Include usage examples for complex functions
 - Keep comments up-to-date with code changes
 
+### README Files Policy
+
+**CRITICAL: Do not create excessive documentation files**
+
+- Maximum of ONE README.md per directory
+- Update existing README.md files instead of creating new ones
+- Use the main README.md at project root for global documentation
+- When documentation is needed:
+  - First check if a README.md already exists in that directory
+  - If it exists, UPDATE it with new information
+  - If it doesn't exist, only create one if absolutely necessary
+  - Never create multiple documentation files in the same directory (e.g., CLI_README.md, API_README.md, etc.)
+- Consolidate related documentation into a single README.md per directory
+- Use sections and headers within README.md to organize different topics
+- Don't create document randomly in the codebase, follow these rules
+
 ## Python Specific
 
 ### Style Guidelines

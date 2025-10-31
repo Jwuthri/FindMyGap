@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.exceptions import DatabaseError, ValidationError
+from app.core.exceptions import DatabaseError, ValidationError
 from app import get_logger
 
 # Type variables for generic repository

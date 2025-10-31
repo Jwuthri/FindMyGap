@@ -13,7 +13,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import SETTINGS, Settings
-from app.exceptions import UnauthorizedError, ValidationError
+from app.core.exceptions import UnauthorizedError, ValidationError
 from app import get_logger
 
 logger = get_logger("clerk_auth")
