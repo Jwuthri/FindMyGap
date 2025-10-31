@@ -13,7 +13,9 @@ from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
+from app import get_logger
+
+logger = get_logger(__name__)
 
 
 class ErrorSeverity(str, Enum):

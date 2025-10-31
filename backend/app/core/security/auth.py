@@ -16,23 +16,6 @@ from sqlalchemy.orm import Session
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def validate_password_strength(password: str, settings: Settings) -> bool:
-    """Validate password meets security requirements."""
-    if len(password) < settings.min_password_length:
-        raise ValidationError(f"Password must be at least {settings.min_password_length} characters long")
-
-    if settings.require_numbers and not re.search(r'\d', password):
-        raise ValidationError("Password must contain at least one number")
-
-    if settings.require_uppercase and not re.search(r'[A-Z]', password):
-        raise ValidationError("Password must contain at least one uppercase letter")
-
-    if settings.require_special_chars and not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-        raise ValidationError("Password must contain at least one special character")
-
-    return True
-
-
 class AuthManager:
     """Authentication and authorization manager."""
 
