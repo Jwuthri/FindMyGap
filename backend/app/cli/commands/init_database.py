@@ -18,8 +18,8 @@ from app import get_logger
 from app.config import SETTINGS
 from app.database.base import SessionLocal
 from app.database.repositories.user import UserRepository
-from app.workflows.utils.data_ingestion_refactored import DataIngestionService
-from app.workflows.utils.schema_manager_refactored import SchemaManagerService
+from app.services.data_ingestion_service import DataIngestionService
+from app.services.schema_service import SchemaService
 
 logger = get_logger(__name__)
 
@@ -76,7 +76,7 @@ def register_reviews_feedback_metadata(db: SessionLocal):
         "data_quality_notes": "Complete dataset with no missing values."
     }
     
-    schema_service = SchemaManagerService(db)
+    schema_service = SchemaService(db)
     success = schema_service.register_platform_dataset("reviews_feedback", metadata)
     if success:
         logger.info("✓ Registered reviews_feedback platform dataset metadata")

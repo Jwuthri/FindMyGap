@@ -1,39 +1,36 @@
 """
-Data ingestion utilities using SQLAlchemy and repository pattern.
+Data ingestion workflow service.
 
-This module handles:
-1. File upload and analysis (CSV, Excel, JSON, Parquet)
+Orchestrates the complete data ingestion pipeline:
+1. File loading and analysis
 2. LLM-based metadata generation
 3. Database table creation and data insertion
-4. Dataset registration via repositories
+4. Dataset registration
 """
 
-import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import pandas as pd
 from agno.models.openai import OpenAIChat
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import get_logger
+from app.core.llm.metadata_generator import MetadataGenerator
+from app.database.repositories.company import CompanyRepository
 from app.database.repositories.dataset import (
     PlatformDatasetRepository,
     UserDatasetRepository,
 )
-from app.workflows.agents.data_ingestion import (
-    DataPreview,
-    DatasetMetadata,
-    create_data_ingestion_agent,
-)
+from app.database.repositories.review import ReviewRepository
+from app.utils import database as db_utils
 from app.workflows.mock_data import MOCK_REVIEWS, get_all_companies
 
 logger = get_logger(__name__)
 
 
 class DataIngestionService:
-    """Service for data ingestion operations."""
+    """Workflow service for data ingestion operations."""
 
     def __init__(self, db: Session):
         """
@@ -45,81 +42,11 @@ class DataIngestionService:
         self.db = db
         self.user_dataset_repo = UserDatasetRepository()
         self.platform_dataset_repo = PlatformDatasetRepository()
+        self.metadata_generator = MetadataGenerator()
 
     def _log_prefix(self, user_id: Optional[int] = None, company_id: Optional[int] = None) -> str:
         """Generate log prefix following team standards."""
         return f"[DataIngestionService] | [user_id={user_id or 'None'}] | [company_id={company_id or 'None'}]"
-
-    def sanitize_table_name(self, name: str, user_id: int) -> str:
-        """
-        Create a safe, unique table name from user input.
-        
-        Prefixes with __user_{id}_ to ensure uniqueness across users.
-        The double underscore prefix makes it easier to identify user tables.
-        
-        Args:
-            name: Original name (from filename or user input)
-            user_id: User ID to prefix
-            
-        Returns:
-            Safe, unique table name with __user_{id}_ prefix
-        """
-        # Remove file extension
-        name = Path(name).stem
-        
-        # Convert to snake_case
-        name = name.lower().replace(' ', '_').replace('-', '_')
-        
-        # Remove special characters
-        name = ''.join(c for c in name if c.isalnum() or c == '_')
-        
-        # Prefix with __user_{id}_ for easy identification
-        return f"__user_{user_id}_{name}"
-
-    def analyze_dataframe(self, df: pd.DataFrame, filename: str) -> DataPreview:
-        """
-        Analyze a DataFrame and create a preview for the ingestion agent.
-        
-        Args:
-            df: Pandas DataFrame
-            filename: Original filename
-            
-        Returns:
-            DataPreview object with analysis
-        """
-        # Infer column types
-        columns = {}
-        for col in df.columns:
-            dtype = str(df[col].dtype)
-            if 'int' in dtype:
-                columns[col] = 'INTEGER'
-            elif 'float' in dtype:
-                columns[col] = 'REAL'
-            elif 'datetime' in dtype or 'date' in dtype:
-                columns[col] = 'TIMESTAMP'
-            else:
-                columns[col] = 'TEXT'
-        
-        # Get sample rows (first 10)
-        sample_rows = df.head(10).to_dict('records')
-        
-        # Get null counts
-        null_counts = df.isnull().sum().to_dict()
-        
-        # Get unique counts for categorical columns
-        unique_counts = {}
-        for col in df.columns:
-            if df[col].dtype == 'object' or df[col].nunique() < 50:
-                unique_counts[col] = int(df[col].nunique())
-        
-        return DataPreview(
-            filename=filename,
-            row_count=len(df),
-            columns=columns,
-            sample_rows=sample_rows,
-            null_counts=null_counts,
-            unique_counts=unique_counts
-        )
 
     def generate_unique_table_name(self, base_name: str, user_id: int) -> str:
         """
@@ -191,46 +118,20 @@ class DataIngestionService:
             return {"success": False, "error": f"File loading failed: {e}"}
         
         # 2. Analyze the data
-        preview = self.analyze_dataframe(df, filename)
+        preview = self.metadata_generator.analyze_dataframe(df, filename)
         
         # 3. Get existing user datasets to avoid duplicates
         existing_datasets = self.user_dataset_repo.get_user_dataset_names(self.db, user_id)
         logger.info(f"{self._log_prefix(user_id)} | User has {len(existing_datasets)} existing datasets")
         
-        # 4. Use LLM agent to generate metadata
-        logger.info(f"{self._log_prefix(user_id)} | Generating metadata with LLM agent")
-        ingestion_agent = create_data_ingestion_agent(model)
-        
-        existing_info = ""
-        if existing_datasets:
-            existing_info = f"""
-
-IMPORTANT: This user already has the following datasets:
-{', '.join(existing_datasets)}
-
-Please ensure the collection_name you suggest is different from these existing datasets."""
-        
-        prompt = f"""Analyze this uploaded dataset and generate comprehensive metadata.
-
-Filename: {preview.filename}
-Rows: {preview.row_count}
-
-Columns and Types:
-{json.dumps(preview.columns, indent=2)}
-
-Sample Data (first few rows):
-{json.dumps(preview.sample_rows[:5], indent=2)}
-
-Statistics:
-- Null counts: {json.dumps(preview.null_counts, indent=2) if preview.null_counts else 'N/A'}
-- Unique values: {json.dumps(preview.unique_counts, indent=2) if preview.unique_counts else 'N/A'}
-{existing_info}
-
-Generate metadata for this dataset."""
-
+        # 4. Use LLM to generate metadata
+        logger.info(f"{self._log_prefix(user_id)} | Generating metadata with LLM")
         try:
-            response = await ingestion_agent.arun(prompt)
-            metadata: DatasetMetadata = response.content
+            metadata = await self.metadata_generator.generate_user_dataset_metadata(
+                preview=preview,
+                model=model,
+                existing_dataset_names=existing_datasets
+            )
             logger.info(f"{self._log_prefix(user_id)} | Generated metadata: {metadata.collection_name}")
         except Exception as e:
             logger.error(f"{self._log_prefix(user_id)} | Metadata generation failed: {e}", exc_info=True)
@@ -238,24 +139,25 @@ Generate metadata for this dataset."""
         
         # 5. Create table name
         if table_name:
-            base_table_name = self.sanitize_table_name(table_name, user_id)
+            base_table_name = db_utils.sanitize_table_name(table_name, user_id)
         elif file_ext == '.csv':
-            base_table_name = self.sanitize_table_name(filename, user_id)
+            base_table_name = db_utils.sanitize_table_name(filename, user_id)
         else:
-            base_table_name = self.sanitize_table_name(metadata.collection_name, user_id)
+            base_table_name = db_utils.sanitize_table_name(metadata.collection_name, user_id)
         
         final_table_name = self.generate_unique_table_name(base_table_name, user_id)
         
-        # 6. Insert data into database using pandas to_sql
+        # 6. Insert data into database
         try:
-            # Use SQLAlchemy connection from session
-            df.to_sql(final_table_name, self.db.bind, if_exists="replace", index=False)
+            success = db_utils.insert_dataframe(self.db, df, final_table_name)
+            if not success:
+                return {"success": False, "error": "Database insertion failed"}
             logger.info(f"{self._log_prefix(user_id)} | Data inserted into table: {final_table_name}")
         except Exception as e:
             logger.error(f"{self._log_prefix(user_id)} | Database insertion failed: {e}", exc_info=True)
             return {"success": False, "error": f"Database insertion failed: {e}"}
         
-        # 7. Register in metadata system using repository
+        # 7. Register in metadata system
         column_metadata = {
             "field_descriptions": metadata.field_descriptions,
             "key_fields": metadata.key_fields,
@@ -301,9 +203,6 @@ Generate metadata for this dataset."""
         logger.info(f"{self._log_prefix()} | Starting mock review ingestion")
         
         try:
-            from app.database.repositories.company import CompanyRepository
-            from app.database.repositories.review import ReviewRepository
-            
             company_repo = CompanyRepository()
             review_repo = ReviewRepository()
             
@@ -334,7 +233,7 @@ Generate metadata for this dataset."""
                     total_reviews += 1
                     company_counts[company_name] += 1
             
-            logger.info(f"{self._log_prefix()} | Successfully ingested {total_reviews} reviews into 'reviews_feedback' table")
+            logger.info(f"{self._log_prefix()} | Successfully ingested {total_reviews} reviews")
             
             return {
                 "success": True,
@@ -359,7 +258,7 @@ Generate metadata for this dataset."""
         model: OpenAIChat
     ) -> Dict[str, Any]:
         """
-        Generate metadata for a platform dataset using LLM agent.
+        Generate metadata for a platform dataset using LLM.
         
         Args:
             table_name: Name of the platform table
@@ -371,42 +270,24 @@ Generate metadata for this dataset."""
         logger.info(f"{self._log_prefix()} | Generating metadata for platform table: {table_name}")
         
         try:
-            # Read table data using SQLAlchemy
-            df = pd.read_sql_query(f"SELECT * FROM {table_name} LIMIT 100", self.db.bind)
+            # Read table sample
+            df = db_utils.read_table_sample(self.db, table_name, limit=100)
             
-            if df.empty:
-                return {"success": False, "error": f"Table {table_name} is empty"}
+            if df is None or df.empty:
+                return {"success": False, "error": f"Table {table_name} is empty or doesn't exist"}
             
             logger.info(f"{self._log_prefix()} | Loaded {len(df)} sample rows from {table_name}")
             
             # Analyze the data
-            preview = self.analyze_dataframe(df, table_name)
+            preview = self.metadata_generator.analyze_dataframe(df, table_name)
             
-            # Use LLM agent to generate metadata
-            logger.info(f"{self._log_prefix()} | Generating metadata with LLM agent")
-            ingestion_agent = create_data_ingestion_agent(model)
-            
-            prompt = f"""Analyze this platform dataset and generate comprehensive metadata.
-
-This is a PLATFORM dataset that will be available to all users for analysis.
-
-Table Name: {table_name}
-Rows: {preview.row_count} (sample from larger dataset)
-
-Columns and Types:
-{json.dumps(preview.columns, indent=2)}
-
-Sample Data (first few rows):
-{json.dumps(preview.sample_rows[:5], indent=2)}
-
-Statistics:
-- Null counts: {json.dumps(preview.null_counts, indent=2) if preview.null_counts else 'N/A'}
-- Unique values: {json.dumps(preview.unique_counts, indent=2) if preview.unique_counts else 'N/A'}
-
-Generate comprehensive metadata for this dataset."""
-
-            response = await ingestion_agent.arun(prompt)
-            metadata: DatasetMetadata = response.content
+            # Use LLM to generate metadata
+            logger.info(f"{self._log_prefix()} | Generating metadata with LLM")
+            metadata = await self.metadata_generator.generate_platform_dataset_metadata(
+                table_name=table_name,
+                preview=preview,
+                model=model
+            )
             
             logger.info(f"{self._log_prefix()} | Generated metadata for {table_name}: {metadata.collection_name}")
             

@@ -1,5 +1,12 @@
 """
-Utility functions for FindMyGap.
+Utility functions package for FindMyGap.
+
+Provides common utilities used across the application.
 """
 
-# Note: Helper functions can be added as needed
+from . import database, schema
+
+__all__ = [
+    "database",
+    "schema",
+]

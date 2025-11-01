@@ -5,7 +5,7 @@ from agno.models.openai import OpenAIChat
 from app import get_logger
 from app.config import SETTINGS
 from app.database.base import SessionLocal
-from app.workflows.utils.data_ingestion_refactored import DataIngestionService
+from app.services.data_ingestion_service import DataIngestionService
 
 logger = get_logger(__name__)
 

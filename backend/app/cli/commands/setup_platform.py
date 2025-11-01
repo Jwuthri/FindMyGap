@@ -5,8 +5,8 @@ from agno.models.openai import OpenAIChat
 from app import get_logger
 from app.config import SETTINGS
 from app.database.base import SessionLocal
-from app.workflows.utils.data_ingestion_refactored import DataIngestionService
-from app.workflows.utils.schema_manager_refactored import SchemaManagerService
+from app.services.data_ingestion_service import DataIngestionService
+from app.services.schema_service import SchemaService
 
 logger = get_logger(__name__)
 
@@ -23,14 +23,16 @@ async def setup_platform_datasets():
     
     try:
         ingestion_service = DataIngestionService(db)
-        schema_service = SchemaManagerService(db)
+        schema_service = SchemaService(db)
         
         platform_tables = ["reviews_feedback"]
         
         for table_name in platform_tables:
             logger.info(f"\n📊 Processing: {table_name}")
             
-            if not schema_service.check_table_exists(table_name):
+            from app.utils import database as db_utils
+            
+            if not db_utils.check_table_exists(db, table_name):
                 logger.info(f"  ⚠️  Table doesn't exist, skipping...")
                 continue
             

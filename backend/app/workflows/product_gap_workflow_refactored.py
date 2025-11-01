@@ -23,7 +23,7 @@ from app.workflows.agents.query_analyzer import create_query_analyzer_agent
 from app.workflows.agents.retrieval_planner import create_retrieval_planner_agent
 from app.workflows.steps.data_retrieval_refactored import execute_data_retrieval
 from app.workflows.teams.writer import create_answer_writer_team
-from app.workflows.utils.schema_manager_refactored import SchemaManagerService
+from app.services.schema_service import SchemaService
 
 logger = get_logger(__name__)
 
@@ -138,7 +138,7 @@ def create_product_gap_workflow(
     # Fetch all available table schemas using refactored service
     db_session = SessionLocal()
     try:
-        schema_service = SchemaManagerService(db_session)
+        schema_service = SchemaService(db_session)
         table_schemas = schema_service.get_all_available_schemas(user_id)
         logger.info(f"[create_product_gap_workflow] | [user_id={user_id or 'None'}] | [company_id=None] | Loaded schemas")
     finally:
