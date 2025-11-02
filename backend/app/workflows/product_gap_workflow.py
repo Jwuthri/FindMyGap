@@ -21,7 +21,7 @@ from app.workflows.agents.nlp import create_nlp_analysis_agent
 from app.workflows.agents.output_format import create_output_format_agent
 from app.workflows.agents.query_analyzer import create_query_analyzer_agent
 from app.workflows.agents.retrieval_planner import create_retrieval_planner_agent
-from app.workflows.steps.data_retrieval_refactored import execute_data_retrieval
+from app.workflows.steps.data_retrieval import execute_data_retrieval
 from app.workflows.teams.writer import create_answer_writer_team
 from app.services.schema_service import SchemaService
 

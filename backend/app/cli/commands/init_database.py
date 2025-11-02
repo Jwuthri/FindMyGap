@@ -117,7 +117,7 @@ async def create_sample_conversations(db: SessionLocal, user_id: str = "user_123
     sample_data.to_csv(csv_path, index=False)
     
     # Ingest using the data ingestion service
-    model = OpenAIChat(id="gpt-4o-mini", api_key=SETTINGS.OPENAI_API_KEY)
+    model = OpenAIChat(id="gpt-5-mini", api_key=SETTINGS.OPENAI_API_KEY)
     ingestion_service = DataIngestionService(db)
     
     result = await ingestion_service.ingest_data_file(

@@ -18,7 +18,7 @@ async def setup_platform_datasets():
     logger.info("SETTING UP PLATFORM DATASETS")
     logger.info("="*60)
     
-    model = OpenAIChat(id="gpt-4o-mini", api_key=SETTINGS.OPENAI_API_KEY)
+    model = OpenAIChat(id="gpt-5-mini", api_key=SETTINGS.OPENAI_API_KEY)
     db = SessionLocal()
     
     try:

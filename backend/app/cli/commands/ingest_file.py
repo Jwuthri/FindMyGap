@@ -15,7 +15,7 @@ async def ingest_data_file(file_path: str, user_id: int):
     
     logger.info(f"Ingesting file: {file_path} for user: {user_id}")
     
-    model = OpenAIChat(id="gpt-4o-mini", api_key=SETTINGS.OPENAI_API_KEY)
+    model = OpenAIChat(id="gpt-5-mini", api_key=SETTINGS.OPENAI_API_KEY)
     db = SessionLocal()
     
     try:
