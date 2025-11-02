@@ -2,8 +2,6 @@
 Mock review data for Find My Gaps analysis.
 """
 
-from typing import List, Dict, Any
-
 # Mock review database
 MOCK_REVIEWS = {
     "Spotify": [
@@ -201,73 +199,3 @@ MOCK_REVIEWS = {
         {"id": 190, "category": "review", "rating": 3, "text": "The UI sometimes feels clunky and slow to respond.", "source": "reddit", "date": "2025-09-01", "author": "clunky_ui_netflix"},
     ]
 }
-
-
-def get_reviews(company: str, limit: int = 100) -> List[Dict[str, Any]]:
-    """
-    Get mock reviews for a company.
-    
-    Args:
-        company: Company name (lowercase)
-        limit: Maximum number of reviews
-    
-    Returns:
-        List of review dictionaries
-    """
-    company = company.lower()
-    if company not in MOCK_REVIEWS:
-        return []
-    
-    return MOCK_REVIEWS[company][:limit]
-
-
-def get_all_companies() -> List[str]:
-    """Get list of companies with mock reviews."""
-    return list(MOCK_REVIEWS.keys())
-
-
-def get_reviews_by_rating(company: str, min_rating: int = 1, max_rating: int = 5) -> List[Dict[str, Any]]:
-    """
-    Get reviews filtered by rating range.
-    
-    Args:
-        company: Company name
-        min_rating: Minimum rating (1-5)
-        max_rating: Maximum rating (1-5)
-    
-    Returns:
-        Filtered reviews
-    """
-    reviews = get_reviews(company)
-    return [r for r in reviews if min_rating <= r["category": "review", "rating"] <= max_rating]
-
-
-def get_reviews_by_source(company: str, source: str) -> List[Dict[str, Any]]:
-    """
-    Get reviews from specific source.
-    
-    Args:
-        company: Company name
-        source: Source name (app_store, reddit, trustpilot)
-    
-    Returns:
-        Filtered reviews
-    """
-    reviews = get_reviews(company)
-    return [r for r in reviews if r["source"] == source]
-
-
-def search_reviews(company: str, keyword: str) -> List[Dict[str, Any]]:
-    """
-    Search reviews by keyword.
-    
-    Args:
-        company: Company name
-        keyword: Search keyword
-    
-    Returns:
-        Matching reviews
-    """
-    reviews = get_reviews(company)
-    keyword_lower = keyword.lower()
-    return [r for r in reviews if keyword_lower in r["text"].lower()]

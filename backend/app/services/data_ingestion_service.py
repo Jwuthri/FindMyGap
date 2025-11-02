@@ -24,7 +24,7 @@ from app.database.repositories.dataset import (
 )
 from app.database.repositories.review import ReviewRepository
 from app.utils import database as db_utils
-from app.workflows.mock_data import MOCK_REVIEWS, get_all_companies
+from app.workflows.mock_data import MOCK_REVIEWS
 
 logger = get_logger(__name__)
 
@@ -206,7 +206,7 @@ class DataIngestionService:
             company_repo = CompanyRepository()
             review_repo = ReviewRepository()
             
-            companies = get_all_companies()
+            companies = company_repo.get_all(self.db)
             total_reviews = 0
             company_counts = {}
             
