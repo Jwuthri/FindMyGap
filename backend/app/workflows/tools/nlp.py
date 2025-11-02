@@ -191,7 +191,7 @@ def identify_feature_requests(company: str) -> str:
             "Group similar requests together",
             "Quantify frequency and impact"
         ],
-        response_model=FeatureAnalysisResult,
+        output_schema=FeatureAnalysisResult,
         markdown=False
     )
     
@@ -242,7 +242,7 @@ def cluster_similar_reviews(company: str, num_clusters: int = 5) -> str:
             "Assign reviews to the most relevant cluster",
             "Provide clear cluster names and descriptions"
         ],
-        response_model=ClusteringResult,
+        output_schema=ClusteringResult,
         markdown=False
     )
     

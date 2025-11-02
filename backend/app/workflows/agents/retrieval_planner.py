@@ -25,7 +25,7 @@ def create_retrieval_planner_agent(model: OpenAIChat, table_schemas: str | None 
     Args:
         model: The LLM model to use
         table_schemas: String describing available tables and their schemas
-    """    
+    """
     return Agent(
         name="RetrievalPlanner",
         role="SQL Query Generator for Data Retrieval",
@@ -46,7 +46,7 @@ def create_retrieval_planner_agent(model: OpenAIChat, table_schemas: str | None 
             "Return a structured plan with SQL queries - DO NOT execute them yourself",
             "SQL syntax: Use standard SQLite syntax"
         ],
-        response_model=RetrievalPlan,
+        output_schema=RetrievalPlan,
         markdown=False,
         debug_mode=False,
     )

@@ -46,7 +46,7 @@ def verify_answer_accuracy(answer: str, original_data: str, question: str) -> st
             "Check for accuracy, data references, and completeness",
             "Provide specific recommendations for improvement"
         ],
-        response_model=VerificationResult,
+        output_schema=VerificationResult,
         markdown=False
     )
     

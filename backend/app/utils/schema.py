@@ -73,7 +73,6 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
     platform_dataset_repo = PlatformDatasetRepository()
     
     schemas = []
-    
     # 1. Add platform datasets
     platform_datasets = platform_dataset_repo.get_all(db)
     

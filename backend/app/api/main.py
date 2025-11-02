@@ -2,17 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import sentry_sdk
 
-from app.config import get_settings
+from app.config import SETTINGS
 from app.api.v1 import health
-
-try:
-    from app.api.v1 import analysis
-except ImportError:
-    analysis = None
 
 
 sentry_sdk.init(
-    dsn=get_settings().SENTRY_DSN,
+    dsn=SETTINGS.SENTRY_DSN,
     send_default_pii=True,
     enable_logs=True,
     traces_sample_rate=.5,
@@ -35,5 +30,3 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, prefix="/api/v1")
-if analysis:
-    app.include_router(analysis.router, prefix="/api/v1")
