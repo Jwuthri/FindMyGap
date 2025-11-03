@@ -4,8 +4,6 @@ Product Gap Detection Workflow using refactored services.
 This workflow intelligently analyzes product gaps with conditional execution.
 """
 
-from typing import Optional
-
 from agno.db.postgres import PostgresDb
 from agno.models.openai import OpenAIChat
 from agno.workflow.condition import Condition

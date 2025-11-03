@@ -2,14 +2,15 @@
 User Review Feedback repository for managing user access to reviews.
 """
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, distinct
 
 from app import get_logger
 from app.database.models.user_review_feedback import UserReviewFeedbackTable
 from app.database.models.review import ReviewTable
+from app.database.models.company import CompanyTable
 
 logger = get_logger(__name__)
 
@@ -80,11 +81,12 @@ class UserReviewFeedbackRepository:
             limit: Maximum number of records to return
             
         Returns:
-            List of Review objects the user has access to
+            List of Review objects the user has access to (with company loaded)
         """
         return (
             db.query(ReviewTable)
             .join(UserReviewFeedbackTable, ReviewTable.id == UserReviewFeedbackTable.review_id)
+            .join(CompanyTable, ReviewTable.company_id == CompanyTable.id)
             .filter(UserReviewFeedbackTable.user_id == user_id)
             .order_by(ReviewTable.created_at.desc())
             .offset(skip)
@@ -268,3 +270,26 @@ class UserReviewFeedbackRepository:
         return db.query(UserReviewFeedbackTable).filter(
             UserReviewFeedbackTable.user_id == user_id
         ).count()
+
+    def get_user_companies(self, db: Session, user_id: int) -> List[Dict[str, any]]:
+        """
+        Get all companies that a user has review access to.
+        
+        Args:
+            db: Database session
+            user_id: User ID
+            
+        Returns:
+            List of dicts with company id and name: [{"id": 1, "name": "Company A"}, ...]
+        """
+        results = (
+            db.query(CompanyTable.id, CompanyTable.name)
+            .join(ReviewTable, CompanyTable.id == ReviewTable.company_id)
+            .join(UserReviewFeedbackTable, ReviewTable.id == UserReviewFeedbackTable.review_id)
+            .filter(UserReviewFeedbackTable.user_id == user_id)
+            .distinct()
+            .order_by(CompanyTable.name)
+            .all()
+        )
+        
+        return [{"id": company_id, "name": company_name} for company_id, company_name in results]

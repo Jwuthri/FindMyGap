@@ -7,7 +7,7 @@ from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from agno.tools import tool
 
-from app.workflows.mock_data import get_reviews
+# from app.workflows.mock_data import get_reviews
 from app.config import SETTINGS
 
 # ============================================================================
