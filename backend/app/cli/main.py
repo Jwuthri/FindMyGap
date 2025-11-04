@@ -109,13 +109,11 @@ def seed_companies():
 
 @cli.command()
 @click.option('--user-id', required=True, type=int, help='User ID to grant access to')
-@click.option('--company-id', required=True, type=int, help='Company ID whose reviews to grant access to')
-@click.option('--access-type', default='platform', help='Access type (default: platform)')
-@click.option('--is-owner', is_flag=True, help='Mark user as owner of these reviews')
-def grant_company_access(user_id, company_id, access_type, is_owner):
-    """Grant a user access to all reviews from a specific company."""
+@click.option('--company-name', required=True, help='Company name whose reviews to grant access to')
+def grant_company_access(user_id, company_name):
+    """Grant a user access to all reviews from a specific company (copies reviews)."""
     from app.cli.commands.grant_review_access import grant_company_reviews_access
-    success = grant_company_reviews_access(user_id, company_id, access_type, is_owner)
+    success = grant_company_reviews_access(user_id, company_name)
     if not success:
         click.echo("❌ Failed to grant access", err=True)
         exit(1)
@@ -123,12 +121,10 @@ def grant_company_access(user_id, company_id, access_type, is_owner):
 
 @cli.command()
 @click.option('--user-id', required=True, type=int, help='User ID to grant access to')
-@click.option('--access-type', default='platform', help='Access type (default: platform)')
-@click.option('--is-owner', is_flag=True, help='Mark user as owner of these reviews')
-def grant_all_access(user_id, access_type, is_owner):
-    """Grant a user access to ALL reviews in the system."""
+def grant_all_access(user_id):
+    """Grant a user access to ALL reviews in the system (copies reviews)."""
     from app.cli.commands.grant_review_access import grant_all_reviews_access
-    success = grant_all_reviews_access(user_id, access_type, is_owner)
+    success = grant_all_reviews_access(user_id)
     if not success:
         click.echo("❌ Failed to grant access", err=True)
         exit(1)
@@ -136,11 +132,11 @@ def grant_all_access(user_id, access_type, is_owner):
 
 @cli.command()
 @click.option('--user-id', required=True, type=int, help='User ID to revoke access from')
-@click.option('--company-id', required=True, type=int, help='Company ID whose reviews to revoke access to')
-def revoke_company_access(user_id, company_id):
-    """Revoke a user's access to all reviews from a specific company."""
+@click.option('--company-name', required=True, help='Company name whose reviews to revoke access to')
+def revoke_company_access(user_id, company_name):
+    """Revoke a user's access to all reviews from a specific company (deletes review copies)."""
     from app.cli.commands.grant_review_access import revoke_company_reviews_access
-    success = revoke_company_reviews_access(user_id, company_id)
+    success = revoke_company_reviews_access(user_id, company_name)
     if not success:
         click.echo("❌ Failed to revoke access", err=True)
         exit(1)
@@ -173,6 +169,31 @@ def list_all():
     """List all users and companies."""
     from app.cli.commands.list_entities import list_all as list_all_cmd
     list_all_cmd()
+
+
+@cli.command()
+@click.option('--table', required=True, help='Table name to generate EDA for')
+def generate_eda(table):
+    """Generate EDA for a specific table using LLM."""
+    from app.cli.commands.generate_eda import generate_eda_for_table
+    asyncio.run(generate_eda_for_table(table))
+
+
+@cli.command()
+@click.option('--tables', multiple=True, help='Specific tables to refresh (optional)')
+def refresh_eda(tables):
+    """Refresh EDA for all tables or specific tables."""
+    from app.cli.commands.generate_eda import refresh_all_eda
+    table_list = list(tables) if tables else None
+    asyncio.run(refresh_all_eda(table_list))
+
+
+@cli.command()
+@click.option('--table', required=True, help='Table name to view EDA for')
+def view_eda(table):
+    """View EDA for a table."""
+    from app.cli.commands.generate_eda import view_eda as view_eda_cmd
+    view_eda_cmd(table)
 
 
 if __name__ == '__main__':

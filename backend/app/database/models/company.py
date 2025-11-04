@@ -5,7 +5,6 @@ Company model.
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String, Text
-from sqlalchemy.orm import relationship
 
 from ..base import Base
 
@@ -23,9 +22,6 @@ class CompanyTable(Base):
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    # Relationships
-    reviews = relationship("ReviewTable", back_populates="company")
 
     def __repr__(self):
         return f"<Company(id={self.id}, name={self.name})>"

@@ -130,5 +130,5 @@ async def run_workflow(query: str, stream: bool = True):
 
 if __name__ == "__main__":
     # Test query
-    test_query = "What are the main product gaps for Spotify based on customer reviews?"
+    test_query = "What are the main product gaps for Netflix based on customer reviews?"
     asyncio.run(run_workflow(test_query))

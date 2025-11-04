@@ -83,6 +83,43 @@ Creates a new user.
 python -m app.cli.main create-user --email john@example.com --username john --full-name "John Doe"
 ```
 
+
+## Eda table
+
+### Refresh All Tables
+
+```bash
+# Refresh EDA for all tables
+python -m app.cli refresh-eda
+
+# Refresh specific tables
+python -m app.cli refresh-eda --tables user_review_feedback --tables reviews_feedback
+```
+
+### View EDA
+
+### Refresh All Tables
+
+```bash
+# Refresh EDA for all tables
+python -m app.cli refresh-eda
+
+# Refresh specific tables
+python -m app.cli refresh-eda --tables user_review_feedback --tables reviews_feedback
+```
+
+### View EDA
+
+```bash
+# View EDA for a table
+python -m app.cli view-eda --table user_review_feedback
+```
+
+### Generate EDA for a Table
+```bash
+python -m app.cli.main generate-eda --table user_review_feedback
+```
+
 Options:
 
 - `--email` (required): User email

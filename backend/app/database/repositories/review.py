@@ -23,7 +23,7 @@ class ReviewRepository:
     def create(
         self,
         db: Session,
-        company_id: int,
+        company_name: str,
         text: str,
         rating: Optional[int] = None,
         category: Optional[str] = None,
@@ -33,7 +33,7 @@ class ReviewRepository:
     ) -> ReviewTable:
         """Create a new review."""
         review = ReviewTable(
-            company_id=company_id,
+            company_name=company_name,
             text=text,
             rating=rating,
             category=category,
@@ -44,7 +44,7 @@ class ReviewRepository:
         db.add(review)
         db.commit()
         db.refresh(review)
-        logger.info(f"{self._log_prefix(company_id=company_id)} | Created review")
+        logger.info(f"{self._log_prefix()} | Created review for {company_name}")
         return review
 
     def get_by_id(self, db: Session, review_id: int) -> Optional[ReviewTable]:
@@ -54,14 +54,14 @@ class ReviewRepository:
     def get_by_company(
         self,
         db: Session,
-        company_id: int,
+        company_name: str,
         skip: int = 0,
         limit: int = 100
     ) -> List[ReviewTable]:
         """Get all reviews for a company."""
         return (
             db.query(ReviewTable)
-            .filter(ReviewTable.company_id == company_id)
+            .filter(ReviewTable.company_name == company_name)
             .order_by(ReviewTable.created_at.desc())
             .offset(skip)
             .limit(limit)

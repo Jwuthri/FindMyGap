@@ -1,39 +1,31 @@
 """
-User Review Feedback model - junction table for user access to reviews.
+User Review Feedback model - user's copy of reviews they have access to.
 """
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, ForeignKey, String, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from ..base import Base
 
 
 class UserReviewFeedbackTable(Base):
-    """Junction table linking users to reviews they have access to."""
+    """User's copy of reviews they have access to."""
     __tablename__ = "user_review_feedback"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
-    review_id = Column(Integer, ForeignKey('reviews_feedback.id'), nullable=False, index=True)
-    
-    # Optional: Track if user added this review or it was shared with them
-    is_owner = Column(Boolean, default=False, nullable=False)
-    
-    # Optional: Track how the user got access (e.g., "uploaded", "shared", "platform")
-    access_type = Column(String(50), nullable=True)
-    
-    # Optional: Additional metadata about this user-review relationship
-    notes = Column(String, nullable=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    company_name = Column(String(255), nullable=False, index=True)
+    category = Column(String, nullable=True)
+    rating = Column(Integer, nullable=True)
+    text = Column(Text, nullable=False)
+    source = Column(String, nullable=True)
+    date = Column(DateTime, nullable=True)
+    author = Column(String, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Relationships
-    user = relationship("UserTable", backref="user_reviews")
-    review = relationship("ReviewTable", backref="user_access")
-
     def __repr__(self):
-        return f"<UserReviewFeedback(id={self.id}, user_id={self.user_id}, review_id={self.review_id})>"
+        return f"<UserReviewFeedback(id={self.id}, user_id={self.user_id}, company_name={self.company_name})>"

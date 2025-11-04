@@ -30,21 +30,21 @@ def create_retrieval_planner_agent(model: OpenAIChat, table_schemas: str | None 
         name="RetrievalPlanner",
         role="SQL Query Generator for Data Retrieval",
         model=model,
-        description=f"""Analyze the user query and generate SQL queries to retrieve necessary data.
-        
+        description=f"""Analyze the user query and generate SQL queries to retrieve necessary data. We are using PostgresSQL so make sure your queries are compatibles.
+        Don't use :named_parameters (like :company) in plain SQL. Use the real names, write the full SQL queries since we gonna run them aside.
+
         {table_schemas}
         """,
         instructions=[
             "Analyze the user query to understand what data is needed",
             "Generate appropriate SQL SELECT queries based on available tables",
             "Use WHERE clauses to filter data efficiently",
-            "Set reasonable LIMIT clauses (default 100, max 500 for analysis)",
+            "Set reasonable LIMIT clauses (default 200)",
             "Use LIKE for text matching, = for exact matches",
-            "For negative reviews, use: WHERE rating <= 2",
-            "For positive reviews, use: WHERE rating >= 4",
             "You can generate multiple queries if different data types are needed",
             "Return a structured plan with SQL queries - DO NOT execute them yourself",
-            "SQL syntax: Use standard SQLite syntax"
+            "SQL syntax: Use standard SQLite syntax",
+            "Try not to retrieve the `created_at` or `updated_at` if not necessary"
         ],
         output_schema=RetrievalPlan,
         markdown=False,

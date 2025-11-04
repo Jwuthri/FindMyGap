@@ -4,8 +4,7 @@ Review model for customer feedback.
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from ..base import Base
 
@@ -15,7 +14,7 @@ class ReviewTable(Base):
     __tablename__ = "reviews_feedback"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    company_id = Column(Integer, ForeignKey('companies.id'), nullable=False, index=True)
+    company_name = Column(String(255), nullable=False, index=True)
     category = Column(String, nullable=True)
     rating = Column(Integer, nullable=True)
     text = Column(Text, nullable=False)
@@ -27,8 +26,5 @@ class ReviewTable(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Relationships
-    company = relationship("CompanyTable", back_populates="reviews")
-
     def __repr__(self):
-        return f"<Review(id={self.id}, company_id={self.company_id}, rating={self.rating})>"
+        return f"<Review(id={self.id}, company_name={self.company_name}, rating={self.rating})>"

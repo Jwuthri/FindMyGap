@@ -5,6 +5,7 @@ Database models package for FindMyGap.
 from .company import CompanyTable
 from .dataset import DatasetTypeEnum, PlatformDatasetTable, UserDatasetTable
 from .review import ReviewTable
+from .table_eda import TableEDATable
 from .user import UserStatusEnum, UserTable
 from .user_review_feedback import UserReviewFeedbackTable
 
@@ -16,6 +17,7 @@ __all__ = [
     "PlatformDatasetTable",
     "ReviewTable",
     "UserReviewFeedbackTable",
+    "TableEDATable",
     # Enums
     "UserStatusEnum",
     "DatasetTypeEnum",

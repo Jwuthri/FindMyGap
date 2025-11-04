@@ -29,6 +29,7 @@ python -m app.cli.main list-user-access --user-id 1
 | `list-all` | Show both users and companies |
 
 **Examples:**
+
 ```bash
 python -m app.cli.main list-users
 python -m app.cli.main list-companies
@@ -38,6 +39,7 @@ python -m app.cli.main list-user-access --user-id 1
 ## 🔑 Access Management Commands
 
 ### Grant Company Access
+
 ```bash
 python -m app.cli.main grant-company-access \
   --user-id <USER_ID> \
@@ -47,6 +49,7 @@ python -m app.cli.main grant-company-access \
 ```
 
 ### Grant All Access
+
 ```bash
 python -m app.cli.main grant-all-access \
   --user-id <USER_ID> \
@@ -55,6 +58,7 @@ python -m app.cli.main grant-all-access \
 ```
 
 ### Revoke Company Access
+
 ```bash
 python -m app.cli.main revoke-company-access \
   --user-id <USER_ID> \
@@ -64,6 +68,7 @@ python -m app.cli.main revoke-company-access \
 ## 💡 Common Use Cases
 
 ### New User Setup
+
 ```bash
 # Create user
 python -m app.cli.main create-user --email newuser@example.com
@@ -73,6 +78,7 @@ python -m app.cli.main grant-all-access --user-id <ID>
 ```
 
 ### Grant Selective Access
+
 ```bash
 # Give access to Spotify and Netflix only
 python -m app.cli.main grant-company-access --user-id 5 --company-id 1
@@ -80,12 +86,14 @@ python -m app.cli.main grant-company-access --user-id 5 --company-id 4
 ```
 
 ### Check User Access
+
 ```bash
 # See what a user can access
 python -m app.cli.main list-user-access --user-id 5
 ```
 
 ### Remove Access
+
 ```bash
 # Revoke access to specific company
 python -m app.cli.main revoke-company-access --user-id 5 --company-id 1
@@ -112,6 +120,7 @@ python -m app.cli.main revoke-company-access --user-id 5 --company-id 1
 ## 📊 Example Output
 
 ### list-companies
+
 ```
 ============================================================
 COMPANIES
@@ -126,6 +135,7 @@ Found 4 companies:
 ```
 
 ### list-user-access
+
 ```
 ============================================================
 USER ACCESS REPORT - User ID: 1
@@ -147,6 +157,7 @@ Ownership:
 ```
 
 ### grant-company-access
+
 ```
 ============================================================
 GRANTING BULK REVIEW ACCESS

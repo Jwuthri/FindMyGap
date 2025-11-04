@@ -1,16 +1,14 @@
 """
-User Review Feedback repository for managing user access to reviews.
+User Review Feedback repository for managing user's review copies.
 """
 
 from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, distinct
+from sqlalchemy import distinct
 
 from app import get_logger
 from app.database.models.user_review_feedback import UserReviewFeedbackTable
-from app.database.models.review import ReviewTable
-from app.database.models.company import CompanyTable
 
 logger = get_logger(__name__)
 
@@ -18,50 +16,59 @@ logger = get_logger(__name__)
 class UserReviewFeedbackRepository:
     """Repository for UserReviewFeedback model operations."""
 
-    def _log_prefix(self, user_id: Optional[int] = None, review_id: Optional[int] = None) -> str:
+    def _log_prefix(self, user_id: Optional[int] = None) -> str:
         """Generate log prefix following team standards."""
-        return f"[UserReviewFeedbackRepository] | [user_id={user_id or 'None'}] | [review_id={review_id or 'None'}]"
+        return f"[UserReviewFeedbackRepository] | [user_id={user_id or 'None'}]"
 
     def create(
         self,
         db: Session,
         user_id: int,
-        review_id: int,
-        is_owner: bool = False,
-        access_type: Optional[str] = None,
-        notes: Optional[str] = None
+        company_name: str,
+        text: str,
+        rating: Optional[int] = None,
+        category: Optional[str] = None,
+        source: Optional[str] = None,
+        date: Optional[str] = None,
+        author: Optional[str] = None
     ) -> UserReviewFeedbackTable:
         """
-        Grant a user access to a review.
+        Create a review copy for a user.
         
         Args:
             db: Database session
             user_id: User ID
-            review_id: Review ID
-            is_owner: Whether the user owns this review
-            access_type: How the user got access (e.g., "uploaded", "shared", "platform")
-            notes: Optional notes about this relationship
+            company_name: Company name
+            text: Review text
+            rating: Rating
+            category: Category
+            source: Source
+            date: Date
+            author: Author
             
         Returns:
             Created UserReviewFeedback record
         """
         user_review = UserReviewFeedbackTable(
             user_id=user_id,
-            review_id=review_id,
-            is_owner=is_owner,
-            access_type=access_type,
-            notes=notes
+            company_name=company_name,
+            text=text,
+            rating=rating,
+            category=category,
+            source=source,
+            date=date,
+            author=author
         )
         db.add(user_review)
         db.commit()
         db.refresh(user_review)
-        logger.info(f"{self._log_prefix(user_id, review_id)} | Granted user access to review")
+        logger.info(f"{self._log_prefix(user_id)} | Created review for {company_name}")
         return user_review
 
-    def get_by_id(self, db: Session, user_review_id: int) -> Optional[UserReviewFeedbackTable]:
-        """Get user review feedback by ID."""
+    def get_by_id(self, db: Session, review_id: int) -> Optional[UserReviewFeedbackTable]:
+        """Get user review by ID."""
         return db.query(UserReviewFeedbackTable).filter(
-            UserReviewFeedbackTable.id == user_review_id
+            UserReviewFeedbackTable.id == review_id
         ).first()
 
     def get_user_reviews(
@@ -70,7 +77,7 @@ class UserReviewFeedbackRepository:
         user_id: int,
         skip: int = 0,
         limit: int = 100
-    ) -> List[ReviewTable]:
+    ) -> List[UserReviewFeedbackTable]:
         """
         Get all reviews a user has access to.
         
@@ -81,180 +88,68 @@ class UserReviewFeedbackRepository:
             limit: Maximum number of records to return
             
         Returns:
-            List of Review objects the user has access to (with company loaded)
+            List of UserReviewFeedback objects
         """
         return (
-            db.query(ReviewTable)
-            .join(UserReviewFeedbackTable, ReviewTable.id == UserReviewFeedbackTable.review_id)
-            .join(CompanyTable, ReviewTable.company_id == CompanyTable.id)
+            db.query(UserReviewFeedbackTable)
             .filter(UserReviewFeedbackTable.user_id == user_id)
-            .order_by(ReviewTable.created_at.desc())
+            .order_by(UserReviewFeedbackTable.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
 
-    def get_user_owned_reviews(
+    def get_by_company(
         self,
         db: Session,
         user_id: int,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[ReviewTable]:
-        """
-        Get all reviews owned by a user.
-        
-        Args:
-            db: Database session
-            user_id: User ID
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            
-        Returns:
-            List of Review objects owned by the user
-        """
-        return (
-            db.query(ReviewTable)
-            .join(UserReviewFeedbackTable, ReviewTable.id == UserReviewFeedbackTable.review_id)
-            .filter(
-                and_(
-                    UserReviewFeedbackTable.user_id == user_id,
-                    UserReviewFeedbackTable.is_owner == True
-                )
-            )
-            .order_by(ReviewTable.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-
-    def check_user_access(self, db: Session, user_id: int, review_id: int) -> bool:
-        """
-        Check if a user has access to a specific review.
-        
-        Args:
-            db: Database session
-            user_id: User ID
-            review_id: Review ID
-            
-        Returns:
-            True if user has access, False otherwise
-        """
-        exists = db.query(UserReviewFeedbackTable).filter(
-            and_(
-                UserReviewFeedbackTable.user_id == user_id,
-                UserReviewFeedbackTable.review_id == review_id
-            )
-        ).first()
-        return exists is not None
-
-    def grant_access(
-        self,
-        db: Session,
-        user_id: int,
-        review_id: int,
-        access_type: str = "shared"
-    ) -> Optional[UserReviewFeedbackTable]:
-        """
-        Grant a user access to a review if they don't already have it.
-        
-        Args:
-            db: Database session
-            user_id: User ID
-            review_id: Review ID
-            access_type: Type of access being granted
-            
-        Returns:
-            UserReviewFeedback record or None if already exists
-        """
-        if self.check_user_access(db, user_id, review_id):
-            logger.info(f"{self._log_prefix(user_id, review_id)} | User already has access")
-            return None
-        
-        return self.create(db, user_id, review_id, is_owner=False, access_type=access_type)
-
-    def revoke_access(self, db: Session, user_id: int, review_id: int) -> bool:
-        """
-        Revoke a user's access to a review.
-        
-        Args:
-            db: Database session
-            user_id: User ID
-            review_id: Review ID
-            
-        Returns:
-            True if access was revoked, False if no access existed
-        """
-        user_review = db.query(UserReviewFeedbackTable).filter(
-            and_(
-                UserReviewFeedbackTable.user_id == user_id,
-                UserReviewFeedbackTable.review_id == review_id
-            )
-        ).first()
-        
-        if user_review:
-            db.delete(user_review)
-            db.commit()
-            logger.info(f"{self._log_prefix(user_id, review_id)} | Revoked user access to review")
-            return True
-        return False
-
-    def bulk_grant_access(
-        self,
-        db: Session,
-        user_id: int,
-        review_ids: List[int],
-        is_owner: bool = False,
-        access_type: Optional[str] = None
-    ) -> int:
-        """
-        Grant a user access to multiple reviews at once.
-        
-        Args:
-            db: Database session
-            user_id: User ID
-            review_ids: List of review IDs
-            is_owner: Whether the user owns these reviews
-            access_type: How the user got access
-            
-        Returns:
-            Number of new access grants created
-        """
-        count = 0
-        for review_id in review_ids:
-            if not self.check_user_access(db, user_id, review_id):
-                self.create(db, user_id, review_id, is_owner, access_type)
-                count += 1
-        
-        logger.info(f"{self._log_prefix(user_id)} | Granted access to {count} reviews")
-        return count
-
-    def get_review_users(
-        self,
-        db: Session,
-        review_id: int,
+        company_name: str,
         skip: int = 0,
         limit: int = 100
     ) -> List[UserReviewFeedbackTable]:
         """
-        Get all users who have access to a specific review.
+        Get user's reviews for a specific company.
         
         Args:
             db: Database session
-            review_id: Review ID
+            user_id: User ID
+            company_name: Company name
             skip: Number of records to skip
             limit: Maximum number of records to return
             
         Returns:
-            List of UserReviewFeedback records
+            List of UserReviewFeedback objects
         """
         return (
             db.query(UserReviewFeedbackTable)
-            .filter(UserReviewFeedbackTable.review_id == review_id)
+            .filter(
+                UserReviewFeedbackTable.user_id == user_id,
+                UserReviewFeedbackTable.company_name == company_name
+            )
+            .order_by(UserReviewFeedbackTable.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
+
+    def delete(self, db: Session, review_id: int) -> bool:
+        """
+        Delete a user review.
+        
+        Args:
+            db: Database session
+            review_id: Review ID
+            
+        Returns:
+            True if deleted, False otherwise
+        """
+        review = self.get_by_id(db, review_id)
+        if review:
+            db.delete(review)
+            db.commit()
+            logger.info(f"{self._log_prefix(review.user_id)} | Deleted review {review_id}")
+            return True
+        return False
 
     def count_user_reviews(self, db: Session, user_id: int) -> int:
         """
@@ -271,25 +166,22 @@ class UserReviewFeedbackRepository:
             UserReviewFeedbackTable.user_id == user_id
         ).count()
 
-    def get_user_companies(self, db: Session, user_id: int) -> List[Dict[str, any]]:
+    def get_user_companies(self, db: Session, user_id: int) -> List[str]:
         """
-        Get all companies that a user has review access to.
+        Get all companies that a user has reviews for.
         
         Args:
             db: Database session
             user_id: User ID
             
         Returns:
-            List of dicts with company id and name: [{"id": 1, "name": "Company A"}, ...]
+            List of company names
         """
         results = (
-            db.query(CompanyTable.id, CompanyTable.name)
-            .join(ReviewTable, CompanyTable.id == ReviewTable.company_id)
-            .join(UserReviewFeedbackTable, ReviewTable.id == UserReviewFeedbackTable.review_id)
+            db.query(distinct(UserReviewFeedbackTable.company_name))
             .filter(UserReviewFeedbackTable.user_id == user_id)
-            .distinct()
-            .order_by(CompanyTable.name)
+            .order_by(UserReviewFeedbackTable.company_name)
             .all()
         )
         
-        return [{"id": company_id, "name": company_name} for company_id, company_name in results]
+        return [name[0] for name in results]

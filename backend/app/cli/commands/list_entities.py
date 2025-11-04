@@ -55,7 +55,7 @@ def list_companies():
         
         logger.info(f"\nFound {len(companies)} companies:\n")
         for company in companies:
-            reviews = review_repo.get_by_company(db, company.id, skip=0, limit=10000)
+            reviews = review_repo.get_by_company(db, company.name, skip=0, limit=10000)
             review_count = len(reviews)
             logger.info(f"  ID: {company.id:3d} | Name: {company.name:20s} | Reviews: {review_count:4d}")
         
@@ -101,26 +101,18 @@ def list_user_access(user_id: int):
         # Group by company
         company_groups = {}
         for review in reviews:
-            company_id = review.company_id
-            if company_id not in company_groups:
-                company_groups[company_id] = []
-            company_groups[company_id].append(review)
+            company_name = review.company_name
+            if company_name not in company_groups:
+                company_groups[company_name] = []
+            company_groups[company_name].append(review)
         
         logger.info(f"Companies: {len(company_groups)}\n")
         
         # Show breakdown by company
-        for company_id, company_reviews in sorted(company_groups.items()):
-            company = company_repo.get_by_id(db, company_id)
-            company_name = company.name if company else f"Unknown (ID: {company_id})"
+        for company_name, company_reviews in sorted(company_groups.items()):
             logger.info(f"  {company_name:20s} - {len(company_reviews):4d} reviews")
         
-        # Show ownership stats
-        owned_count = len(user_review_repo.get_user_owned_reviews(db, user_id, skip=0, limit=10000))
-        shared_count = len(reviews) - owned_count
-        
-        logger.info(f"\nOwnership:")
-        logger.info(f"  Owned:  {owned_count:4d} reviews")
-        logger.info(f"  Shared: {shared_count:4d} reviews")
+        logger.info(f"\nTotal: {len(reviews)} reviews from {len(company_groups)} companies")
         
     finally:
         db.close()

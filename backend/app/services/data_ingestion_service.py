@@ -206,23 +206,24 @@ class DataIngestionService:
             company_repo = CompanyRepository()
             review_repo = ReviewRepository()
             
-            companies = company_repo.get_all(self.db)
+            # Get company names from MOCK_REVIEWS
+            company_names = list(MOCK_REVIEWS.keys())
             total_reviews = 0
             company_counts = {}
             
-            for company_name in companies:
-                # Get or create company
-                company = company_repo.get_or_create(self.db, name=company_name)
+            for company_name in company_names:
+                # Ensure company exists in companies table
+                company_repo.get_or_create(self.db, name=company_name)
                 company_counts[company_name] = 0
                 
                 # Get reviews for this company
                 company_reviews = MOCK_REVIEWS[company_name]
                 
                 for review_data in company_reviews:
-                    # Create review with company_id
+                    # Create review with company_name
                     review_repo.create(
                         db=self.db,
-                        company_id=company.id,
+                        company_name=company_name,
                         text=review_data['text'],
                         rating=review_data.get('rating'),
                         category=review_data.get('category'),
@@ -241,7 +242,7 @@ class DataIngestionService:
                 "total_rows": total_reviews,
                 "companies": list(company_counts.keys()),
                 "company_counts": company_counts,
-                "message": f"Successfully ingested {total_reviews} reviews from {len(companies)} companies"
+                "message": f"Successfully ingested {total_reviews} reviews from {len(company_names)} companies"
             }
             
         except Exception as e:
