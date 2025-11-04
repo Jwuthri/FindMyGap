@@ -43,4 +43,3 @@ structured_output_agent = Agent(
 #     "New York", stream=True, stream_intermediate_steps=True
 # )
 res = structured_output_agent.run("New York")
-breakpoint()

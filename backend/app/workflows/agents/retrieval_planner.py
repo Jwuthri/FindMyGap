@@ -44,7 +44,9 @@ def create_retrieval_planner_agent(model: OpenAIChat, table_schemas: str | None 
             "You can generate multiple queries if different data types are needed",
             "Return a structured plan with SQL queries - DO NOT execute them yourself",
             "SQL syntax: Use standard SQLite syntax",
-            "Try not to retrieve the `created_at` or `updated_at` if not necessary"
+            "Try not to retrieve the `created_at` or `updated_at` if not necessary",
+            "For float values please round them to 2 decimal places",
+            "For date values please format them as 'YYYY-MM-DD' ignore the time"
         ],
         output_schema=RetrievalPlan,
         markdown=False,

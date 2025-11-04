@@ -19,7 +19,7 @@ from app.workflows.agents.nlp import create_nlp_analysis_agent
 from app.workflows.agents.output_format import create_output_format_agent
 from app.workflows.agents.query_analyzer import create_query_analyzer_agent
 from app.workflows.agents.retrieval_planner import create_retrieval_planner_agent
-from app.workflows.steps.data_retrieval import execute_data_retrieval
+from app.workflows.steps.data_retrieval import DataRetrievalService, execute_data_retrieval
 from app.workflows.teams.writer import create_answer_writer_team
 from app.services.schema_service import SchemaService
 
@@ -75,9 +75,18 @@ def send_to_writer_team(step_input: StepInput) -> StepOutput:
     # Get data from various steps (if they ran)
     data_retrieval = None
     nlp_analysis = None
-    
+    db_session = SessionLocal()
+    breakpoint()
     try:
         data_retrieval = step_input.previous_step_outputs.get("DataRetrievalCondition")
+        # if format_for_llm:
+        formatted_output = DataRetrievalService(db_session).format_data_for_llm(
+            results=data_retrieval['data'],
+            total_rows=data_retrieval['total_rows'],
+            data_types=data_retrieval['data_types'],
+            retrieval_reasoning=data_retrieval['retrieval_reasoning'],
+            format=data_retrieval['format']
+        )
     except Exception:
         pass
     
@@ -92,12 +101,13 @@ Data: {data_retrieval}
 Analysis: {nlp_analysis}"""
     
     logger.info(f"[send_to_writer_team] | [user_id=None] | [company_id=None] | Prepared context for writer team {report}")
-    breakpoint()
+
     return StepOutput(content=report)
 
 
 def send_debugging(step_input: StepInput) -> StepOutput:
     """Debug step to inspect previous outputs."""
+
     return StepOutput(content=step_input.previous_step_outputs['DataRetrievalCondition'].steps[1].content)
 
 
@@ -168,8 +178,10 @@ def create_product_gap_workflow(
     def execute_data_retrieval_with_session(step_input: StepInput) -> StepOutput:
         """Wrapper to provide database session to data retrieval."""
         db_session = SessionLocal()
+        retrieval_steps = step_input.previous_step_outputs['AnalysisAndFormatDetection'].steps
+        data_step = [x for x in retrieval_steps if x.step_name == "QueryAnalysis"][0]
         try:
-            return execute_data_retrieval(step_input, db_session)
+            return execute_data_retrieval(step_input, db_session, format="csv" if data_step.content.needs_nlp_analysis else "json")
         finally:
             db_session.close()
     
@@ -185,7 +197,12 @@ def create_product_gap_workflow(
         retrieved_data = None
         breakpoint()
         try:
-            data_retrieval_output = step_input.previous_step_outputs.get("DataRetrievalCondition")
+            previous_step_outputs = step_input.previous_step_outputs
+
+            analysis = previous_step_outputs.get("AnalysisAndFormatDetection")
+            query_analysis = [x for x in analysis.steps if x.step_name == "QueryAnalysis"][0].content
+        
+            data_retrieval_output = previous_step_outputs.get("DataRetrievalCondition")
             if data_retrieval_output:
                 # Get the actual data from the DataRetrieval step within the condition
                 retrieval_steps = data_retrieval_output.steps
@@ -197,12 +214,16 @@ def create_product_gap_workflow(
         # Create enhanced input with retrieved data
         enhanced_input = f"""Original Query: {step_input.input}
 
-Retrieved Data:
+## Here is the query analysis:
+{query_analysis}
+
+## Here is the retrieved data:
 {retrieved_data}
 
 Please perform NLP analysis on the retrieved data above."""
         
         # Run the NLP agent with the enhanced input
+        breakpoint()
         response = nlp_analysis.run(enhanced_input)
         return StepOutput(content=response.content)
     

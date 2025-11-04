@@ -81,7 +81,6 @@ for chunk in response:
         logger.error(f"REASONING from team: {chunk.reasoning_content}")
 
     elif chunk.event in [RunEvent.run_content] and chunk.content:
-        # breakpoint()
         logger.info(f"OUTPUT from {chunk.agent_id}: {chunk.content}")
     elif chunk.event in [TeamRunEvent.run_content] and chunk.content:
         logger.info(f"OUTPUT from team: {chunk.content}")

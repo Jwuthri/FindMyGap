@@ -14,6 +14,7 @@ class QueryAnalysis(BaseModel):
     company: Optional[str] = Field(None, description="Company name if applicable")
     query_type: str = Field(..., description="Type of query: data_only, analysis, general, etc")
     reasoning: str = Field(..., description="Brief explanation of routing decision")
+    analysis_type: str = Field(..., description="What type of analysis is needed, TFIDF, clustering ...")
 
 
 def create_query_analyzer_agent(model: OpenAIChat) -> Agent:
