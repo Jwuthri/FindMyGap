@@ -4,6 +4,10 @@ Product Gap Detection Workflow using refactored services.
 This workflow intelligently analyzes product gaps with conditional execution.
 """
 
+import json
+from datetime import date, datetime
+from decimal import Decimal
+
 from agno.db.postgres import PostgresDb
 from agno.models.openai import OpenAIChat
 from agno.workflow.condition import Condition
@@ -16,6 +20,8 @@ from app import get_logger
 from app.config import SETTINGS
 from app.database.base import SessionLocal
 from app.workflows.agents.nlp import create_nlp_analysis_agent
+from app.workflows.agents.nlp_planner import create_nlp_planner_agent
+from app.workflows.agents.nlp_executor import create_nlp_executor_agent
 from app.workflows.agents.output_format import create_output_format_agent
 from app.workflows.agents.query_analyzer import create_query_analyzer_agent
 from app.workflows.agents.retrieval_planner import create_retrieval_planner_agent
@@ -24,6 +30,19 @@ from app.workflows.teams.writer import create_answer_writer_team
 from app.services.schema_service import SchemaService
 
 logger = get_logger(__name__)
+
+
+# ============================================================================
+# HELPERS
+# ============================================================================
+
+def decimal_default(obj):
+    """JSON serializer for Decimal, date, and datetime objects."""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 # ============================================================================
@@ -52,7 +71,8 @@ def needs_nlp_analysis(step_input: StepInput) -> bool:
     try:
         steps = step_input.previous_step_outputs.get("AnalysisAndFormatDetection")
         step = [x for x in steps.steps if x.step_name == "QueryAnalysis"][0].content
-        return step.needs_nlp_analysis
+        # return step.needs_nlp_analysis
+        return False
     except Exception as e:
         logger.error(f"[needs_nlp_analysis] | [user_id=None] | [company_id=None] | Error: {e}")
         return False
@@ -76,10 +96,11 @@ def send_to_writer_team(step_input: StepInput) -> StepOutput:
     data_retrieval = None
     nlp_analysis = None
     db_session = SessionLocal()
-    breakpoint()
     try:
         data_retrieval = step_input.previous_step_outputs.get("DataRetrievalCondition")
+        data_retrieval = data_retrieval.steps[1].content
         # if format_for_llm:
+        breakpoint()
         formatted_output = DataRetrievalService(db_session).format_data_for_llm(
             results=data_retrieval['data'],
             total_rows=data_retrieval['total_rows'],
@@ -96,10 +117,11 @@ def send_to_writer_team(step_input: StepInput) -> StepOutput:
         pass
     
     report = f"""Writer Team Context:
+add the query here
 Expected output Format: {format_detection}
 Data: {data_retrieval}
 Analysis: {nlp_analysis}"""
-    
+    breakpoint()
     logger.info(f"[send_to_writer_team] | [user_id=None] | [company_id=None] | Prepared context for writer team {report}")
 
     return StepOutput(content=report)
@@ -157,7 +179,8 @@ def create_product_gap_workflow(
         db_session.close()
     
     retrieval_planner = create_retrieval_planner_agent(model, table_schemas=table_schemas)
-    nlp_analysis = create_nlp_analysis_agent(model)
+    nlp_planner = create_nlp_planner_agent(model)
+    nlp_executor = create_nlp_executor_agent(model)
     format_detection = create_output_format_agent(model)
     answer_writers = create_answer_writer_team(model)
     
@@ -178,10 +201,9 @@ def create_product_gap_workflow(
     def execute_data_retrieval_with_session(step_input: StepInput) -> StepOutput:
         """Wrapper to provide database session to data retrieval."""
         db_session = SessionLocal()
-        retrieval_steps = step_input.previous_step_outputs['AnalysisAndFormatDetection'].steps
-        data_step = [x for x in retrieval_steps if x.step_name == "QueryAnalysis"][0]
         try:
-            return execute_data_retrieval(step_input, db_session, format="csv" if data_step.content.needs_nlp_analysis else "json")
+            # Always use JSON format for NLP analysis tools
+            return execute_data_retrieval(step_input, db_session, format="json")
         finally:
             db_session.close()
     
@@ -192,13 +214,11 @@ def create_product_gap_workflow(
     )
     
     def execute_nlp_analysis_with_data(step_input: StepInput) -> StepOutput:
-        """Wrapper to pass retrieved data to NLP analysis agent."""
-        # Get ptionfrom DataRetrievalCondition
+        """Execute NLP analysis using planner + executor approach."""
         retrieved_data = None
-        breakpoint()
         try:
             previous_step_outputs = step_input.previous_step_outputs
-
+            
             analysis = previous_step_outputs.get("AnalysisAndFormatDetection")
             query_analysis = [x for x in analysis.steps if x.step_name == "QueryAnalysis"][0].content
         
@@ -210,22 +230,80 @@ def create_product_gap_workflow(
                 retrieved_data = data_step.content
         except Exception as e:
             logger.error(f"[execute_nlp_analysis_with_data] | Error extracting retrieved data: {e}")
+            return StepOutput(content={"error": str(e)})
         
-        # Create enhanced input with retrieved data
-        enhanced_input = f"""Original Query: {step_input.input}
+        if not retrieved_data or 'data' not in retrieved_data:
+            return StepOutput(content={"error": "No data available for analysis"})
 
-## Here is the query analysis:
+        # Step 1: Create dataset summary for planner with actual structure
+        datasets = retrieved_data['data']
+        dataset_summary = []
+        
+        for key, value in datasets.items():
+            if isinstance(value, list) and len(value) > 0:
+                # Show structure with sample
+                sample = value[0] if len(value) > 0 else {}
+                fields = list(sample.keys()) if isinstance(sample, dict) else []
+                dataset_summary.append(
+                    f"- {key}: {len(value)} rows\n"
+                    f"  Fields: {', '.join(fields)}\n"
+                    f"  Sample: {json.dumps(sample, indent=4, default=decimal_default)}"
+                )
+            elif isinstance(value, dict):
+                dataset_summary.append(f"- {key}: {json.dumps(value, indent=2, default=decimal_default)}")
+            else:
+                dataset_summary.append(f"- {key}: {type(value).__name__}")
+        breakpoint()
+        dataset_summary = "\n\n".join(dataset_summary)
+        
+        planning_prompt = f"""Original Query: {step_input.input}
+
+Query Analysis:
 {query_analysis}
 
-## Here is the retrieved data:
-{retrieved_data}
+Available Datasets:
+{dataset_summary}
 
-Please perform NLP analysis on the retrieved data above."""
+Create an analysis plan that determines which tools to use on which datasets to answer the query."""
         
-        # Run the NLP agent with the enhanced input
+        # Step 2: Create analysis plan
+        logger.info("[execute_nlp_analysis_with_data] | Creating analysis plan...")
+        plan_response = nlp_planner.run(planning_prompt)
         breakpoint()
-        response = nlp_analysis.run(enhanced_input)
-        return StepOutput(content=response.content)
+        plan = plan_response.content
+        
+        logger.info(f"[execute_nlp_analysis_with_data] | Plan created: {plan.model_dump()}")
+        
+        # Step 3: Execute plan with actual datasets
+        # Convert datasets to JSON strings for tools
+        datasets_as_json_strings = {}
+        for key, value in datasets.items():
+            if isinstance(value, (list, dict)):
+                datasets_as_json_strings[key] = json.dumps(value, default=decimal_default)
+            else:
+                datasets_as_json_strings[key] = value
+        
+        execution_prompt = f"""Execute the following analysis plan:
+
+{plan.model_dump_json(indent=2)}
+
+Available Datasets (JSON format):
+"""
+        # Append each dataset that's in the plan
+        for task in plan.tasks:
+            dataset_key = task.dataset_key
+            if dataset_key in datasets_as_json_strings:
+                execution_prompt += f"\n## Dataset: {dataset_key}\n{datasets_as_json_strings[dataset_key]}\n"
+        
+        execution_prompt += f"""
+
+Execute each task in the plan and provide a comprehensive analysis that answers: {step_input.input}"""
+        
+        logger.info("[execute_nlp_analysis_with_data] | Executing analysis plan...")
+        execution_response = nlp_executor.run(execution_prompt)
+        breakpoint()
+        
+        return StepOutput(content=execution_response.content)
     
     nlp_analysis_step = Step(
         name="NLPAnalysis",
