@@ -1,14 +1,15 @@
 """
 Main workflow definition using LlamaIndex.
 
-This workflow implements the product gap detection logic with sequential execution.
+This workflow implements the product gap detection logic with multi-step execution.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from llama_index.core.workflow import (
     Workflow,
     StartEvent,
     StopEvent,
+    Event,
     step,
     Context
 )
@@ -26,6 +27,43 @@ from .agents import (
 from .services import DataRetrievalService
 
 logger = get_logger(__name__)
+
+
+# Define custom events for workflow steps
+class QueryAnalyzedEvent(Event):
+    """Event triggered after query analysis is complete."""
+    query: str
+    analysis: Any
+
+
+class FormatDetectedEvent(Event):
+    """Event triggered after format detection is complete."""
+    query: str
+    analysis: Any
+    format_info: Any
+
+
+class RetrievalPlanEvent(Event):
+    """Event triggered when retrieval planning is needed."""
+    query: str
+    analysis: Any
+    format_info: Any
+    plan: RetrievalPlan
+
+
+class DataRetrievedEvent(Event):
+    """Event triggered after data retrieval is complete."""
+    query: str
+    analysis: Any
+    format_info: Any
+    retrieved_data: Optional[Dict[str, Any]]
+
+
+class SkipRetrievalEvent(Event):
+    """Event triggered when data retrieval is not needed."""
+    query: str
+    analysis: Any
+    format_info: Any
 
 
 class ProductGapWorkflow(Workflow):

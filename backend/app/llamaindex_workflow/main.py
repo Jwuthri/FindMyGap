@@ -42,16 +42,27 @@ async def run_workflow_streaming(query: str, user_id: int = 1):
     """
     Execute the workflow with streaming support.
     
-    LlamaIndex workflows support streaming via the stream_events() method.
+    Note: LlamaIndex workflows don't have built-in streaming events.
+    This implementation simulates streaming by yielding progress updates.
     """
     logger.info("🚀 Starting LlamaIndex Workflow (Streaming Mode)")
     
     workflow = ProductGapWorkflow(user_id=user_id, timeout=300, verbose=True)
     
-    # Stream events
-    async for event in workflow.stream_events(query=query):
-        logger.info(f"📡 Event: {event}")
-        yield event
+    # Simulate streaming by yielding progress events
+    yield {"type": "workflow_started", "message": "Workflow started"}
+    
+    try:
+        # Run the workflow
+        result = await workflow.run(query=query)
+        
+        # Yield completion event
+        yield {"type": "workflow_completed", "result": result}
+        
+    except Exception as e:
+        # Yield error event
+        yield {"type": "workflow_error", "error": str(e)}
+        raise
     
     logger.info("🏁 Workflow Completed (Streaming)")
 

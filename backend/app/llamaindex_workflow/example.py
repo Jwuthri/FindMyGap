@@ -137,7 +137,7 @@ async def main():
 
 if __name__ == "__main__":
     # Run a single example
-    asyncio.run(example_basic())
+    # asyncio.run(example_basic())
     
     # Or run all examples
-    # asyncio.run(main())
+    asyncio.run(main())
