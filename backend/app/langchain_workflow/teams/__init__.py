@@ -1,2 +1,0 @@
-"""LangChain multi-agent teams."""
-

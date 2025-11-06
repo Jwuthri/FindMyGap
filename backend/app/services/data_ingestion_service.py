@@ -24,7 +24,7 @@ from app.database.repositories.dataset import (
 )
 from app.database.repositories.review import ReviewRepository
 from app.utils import database as db_utils
-from app.workflows.mock_data import MOCK_REVIEWS
+from app.old_workflows.mock_data import MOCK_REVIEWS
 
 logger = get_logger(__name__)
 

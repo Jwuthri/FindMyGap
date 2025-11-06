@@ -12,7 +12,7 @@ import pandas as pd
 from agno.models.openai import OpenAIChat
 
 from app import get_logger
-from app.workflows.agents.data_ingestion import (
+from app.old_workflows.agents.data_ingestion import (
     DataPreview,
     DatasetMetadata,
     create_data_ingestion_agent,
