@@ -13,7 +13,8 @@ from .table_writer import create_table_writer
 from .chart_writer import create_chart_writer
 from .json_writer import create_json_writer
 from .report_coordinator import create_report_coordinator
-from .workflow_orchestrator import create_answer_writer_workflow, generate_answer
+from .writer_team import create_answer_writer_workflow, generate_answer
+from .nlp_agent import perform_nlp_analysis
 
 __all__ = [
     "get_llm",
@@ -31,4 +32,5 @@ __all__ = [
     "create_report_coordinator",
     "create_answer_writer_workflow",
     "generate_answer",
+    "perform_nlp_analysis",
 ]

@@ -39,10 +39,10 @@ class RetrievalPlan(BaseModel):
     expected_data_types: list[str] = Field(..., description="List of expected data types")
 
 
-def get_llm() -> OpenAI:
+def get_llm(model: str = "gpt-5-mini") -> OpenAI:
     """Get configured LLM instance."""
     return OpenAI(
-        model="gpt-5-mini",
+        model=model,
         api_key=SETTINGS.OPENAI_API_KEY,
         temperature=0.1
     )

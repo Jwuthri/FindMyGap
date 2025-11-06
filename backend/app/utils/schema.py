@@ -7,6 +7,7 @@ Provides schema formatting and retrieval utilities for LLM context.
 from typing import Any, Dict, List, Optional
 from datetime import datetime, date
 
+import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect
 
@@ -89,13 +90,43 @@ def get_column_eda(rows: List[Any], schema: Dict[str, str]) -> Dict[str, Dict[st
     return eda
 
 
+def format_sample_rows(sample_df, max_rows: int = 5) -> str:
+    """
+    Format sample rows from a DataFrame for display.
+    
+    Args:
+        sample_df: DataFrame with sample data
+        max_rows: Maximum number of rows to display
+        
+    Returns:
+        Formatted string with sample rows
+    """
+    if sample_df is None or sample_df.empty:
+        return "  No sample data available"
+    
+    lines = []
+    df_subset = sample_df.head(max_rows)
+    
+    for idx, row in df_subset.iterrows():
+        lines.append(f"  Row {idx + 1}:")
+        for col in df_subset.columns:
+            value = row[col]
+            # Truncate long strings
+            if isinstance(value, str) and len(value) > 100:
+                value = value[:97] + "..."
+            lines.append(f"    {col}: {value}")
+    
+    return "\n".join(lines)
+
+
 def format_table_schema(
     table_name: str,
     columns: Dict[str, str],
     description: str = "",
     metadata: Optional[Dict[str, Any]] = None,
     eda: Optional[TableEDATable] = None,
-    relationships: Optional[List[str]] = None
+    relationships: Optional[List[str]] = None,
+    sample_rows: Optional[Any] = None
 ) -> str:
     """
     Format a single table schema in human-readable format for LLM.
@@ -107,6 +138,7 @@ def format_table_schema(
         metadata: Optional metadata dict with embedding fields, key fields, etc.
         eda: Optional TableEDATable object with EDA data
         relationships: Optional list of relationship descriptions for JOINs
+        sample_rows: Optional DataFrame with sample rows from the table
         
     Returns:
         Formatted schema string
@@ -149,6 +181,12 @@ def format_table_schema(
                 top_vals = ', '.join(field['top_values'][:5])
                 lines.append(f"    Top Values: {top_vals}")
     
+    # Add sample rows
+    if sample_rows is not None:
+        lines.append("")
+        lines.append("Sample Rows (5 examples):")
+        lines.append(format_sample_rows(sample_rows, max_rows=5))
+    
     return "\n".join(lines)
 
 
@@ -186,13 +224,17 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
             # Get metadata
             metadata = platform_dataset_repo.get_metadata(db, dataset.table_name)
             eda_record = eda_repo.get_by_table_name(db, dataset.table_name)
+            
+            # Get sample rows
+            sample_rows = db_utils.read_table_sample(db, dataset.table_name, limit=5)
 
             schema = format_table_schema(
                 dataset.table_name,
                 actual_columns,
                 dataset.description or f"Platform dataset ({dataset.row_count} rows)",
                 metadata=metadata,
-                eda=eda_record
+                eda=eda_record,
+                sample_rows=sample_rows
             )
             schemas.append(schema)
             schemas.append("")
@@ -214,13 +256,17 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
                 # SQLAlchemy automatically deserializes JSON columns
                 metadata = dataset.column_metadata
                 eda_record = eda_repo.get_by_table_name(db, dataset.table_name)
+                
+                # Get sample rows
+                sample_rows = db_utils.read_table_sample(db, dataset.table_name, limit=5)
 
                 schema = format_table_schema(
                     dataset.table_name,
                     actual_columns,
                     dataset.description or f"User-uploaded dataset ({dataset.row_count} rows)",
                     metadata=metadata,
-                    eda=eda_record
+                    eda=eda_record,
+                    sample_rows=sample_rows
                 )
                 schemas.append(schema)
                 schemas.append("")
@@ -242,11 +288,15 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
             # Get EDA from database if available
             eda_record = eda_repo.get_by_table_name(db, "user_review_feedback")
             
+            # Get sample rows
+            sample_rows = db_utils.read_table_sample(db, "user_review_feedback", limit=5)
+            
             review_schema = format_table_schema(
                 "user_review_feedback",
                 review_columns,
                 description=f"User's reviews ({len(user_reviews)} reviews). Companies: {company_list}",
-                eda=eda_record
+                eda=eda_record,
+                sample_rows=sample_rows
             )
             schemas.append(review_schema)
             schemas.append("")

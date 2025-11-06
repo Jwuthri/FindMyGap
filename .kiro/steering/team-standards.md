@@ -101,6 +101,18 @@ This standard ensures consistent, traceable logging across the entire backend ap
 - Use sections and headers within README.md to organize different topics
 - Don't create document randomly in the codebase, follow these rules
 
+### Documentation Files - STRICT RULES
+
+**NEVER create multiple documentation files like:**
+- ❌ IMPLEMENTATION.md
+- ❌ QUICK_START.md  
+- ❌ COMPARISON.md
+- ❌ REFERENCE.md
+
+**ONLY create:**
+- ✅ ONE README.md per directory (if needed)
+- ✅ Update existing README.md instead
+
 ## Python Specific
 
 ### Style Guidelines

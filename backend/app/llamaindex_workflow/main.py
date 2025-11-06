@@ -26,7 +26,7 @@ async def run_workflow(query: str, user_id: int = 1, stream: bool = False):
     logger.info("=" * 80)
     
     # Create workflow instance
-    workflow = ProductGapWorkflow(user_id=user_id, timeout=300, verbose=True)
+    workflow = ProductGapWorkflow(user_id=user_id, timeout=900, verbose=True)
     
     # Run workflow
     result = await workflow.run(query=query)
