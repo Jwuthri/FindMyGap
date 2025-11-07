@@ -5,7 +5,7 @@ This shows how the NLP agent selects and configures tools based on the query.
 """
 
 import asyncio
-from app.llamaindex_workflow.agents import QueryAnalysis, perform_nlp_analysis
+from app.workflow.agents import QueryAnalysis, perform_nlp_analysis
 from app import get_logger
 
 logger = get_logger(__name__)

@@ -5,7 +5,7 @@ This demonstrates different ways to use the workflow.
 """
 
 import asyncio
-from app.llamaindex_workflow.main import run_workflow, run_workflow_streaming
+from app.workflow.main import run_workflow, run_workflow_streaming
 from app import get_logger
 
 logger = get_logger(__name__)
@@ -44,7 +44,7 @@ async def example_direct():
     print("EXAMPLE 3: Direct Workflow Usage")
     print("=" * 80 + "\n")
     
-    from app.llamaindex_workflow.workflow import ProductGapWorkflow
+    from app.workflow.workflow import ProductGapWorkflow
     
     # Create workflow with custom settings
     workflow = ProductGapWorkflow(
