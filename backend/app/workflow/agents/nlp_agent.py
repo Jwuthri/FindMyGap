@@ -125,7 +125,6 @@ def _extract_tool_calls(response: Any) -> List[Dict[str, Any]]:
         List of tool call dictionaries with standardized format
     """
     tool_calls = []
-    breakpoint()
     # Extract from response.tool_calls (new FunctionAgent API)
     if hasattr(response, 'tool_calls') and response.tool_calls:
         for tc in response.tool_calls:
@@ -181,13 +180,11 @@ async def perform_nlp_analysis(
     
     # Build user prompt with context
     user_prompt = _build_user_prompt(query, analysis, retrieved_data)
-    logger.info(f"User prompt:\n{user_prompt}")
     
     # Execute agent
     try:
         response = await agent.run(user_prompt)
         logger.info(f"Agent response: {response}")
-        breakpoint()
         
         # Extract tool calls
         tool_calls = _extract_tool_calls(response)

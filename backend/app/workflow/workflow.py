@@ -4,6 +4,7 @@ Main workflow definition using LlamaIndex.
 This workflow implements the product gap detection logic with multi-step execution.
 """
 
+import json
 from typing import Any, Dict, Optional
 from llama_index.core.workflow import (
     Workflow,
@@ -30,6 +31,93 @@ from app.workflow.services import DataRetrievalService
 from app.workflow.services.nlp_service import NLPService
 
 logger = get_logger(__name__)
+
+
+def _summarize_nlp_results(nlp_results: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Summarize NLP results to reduce token consumption.
+    Keeps key insights but removes verbose details.
+    """
+    if not nlp_results or "tool_results" not in nlp_results:
+        return nlp_results
+    
+    summarized = {
+        "tool_results": {},
+        "total_tools_requested": nlp_results.get("total_tools_requested", 0),
+        "total_tools_executed": nlp_results.get("total_tools_executed", 0),
+        "deduplicated": nlp_results.get("deduplicated", 0),
+        "successful": nlp_results.get("successful", 0)
+    }
+    
+    for tool_key, tool_result in nlp_results["tool_results"].items():
+        if "error" in tool_result:
+            summarized["tool_results"][tool_key] = tool_result
+            continue
+        
+        # Summarize based on tool type
+        if "identify_features" in tool_key:
+            summarized["tool_results"][tool_key] = {
+                "feature_requests": {
+                    "count": tool_result.get("feature_requests", {}).get("count", 0),
+                    "total_unique": tool_result.get("feature_requests", {}).get("total_unique", 0)
+                },
+                "pain_points": {
+                    "count": tool_result.get("pain_points", {}).get("count", 0)
+                },
+                "product_gaps": {
+                    "count": tool_result.get("product_gaps", {}).get("count", 0)
+                },
+                "total_analyzed": tool_result.get("total_analyzed", 0)
+            }
+        
+        elif "cluster_reviews" in tool_key:
+            clusters = tool_result.get("clusters", [])
+            # Keep only top 3 clusters with limited samples
+            summarized_clusters = []
+            for cluster in clusters[:3]:
+                rating_dist = cluster.get("rating_distribution", {})
+                # Calculate weighted average rating
+                if rating_dist:
+                    total_ratings = sum(rating_dist.values())
+                    weighted_sum = sum(rating * count for rating, count in rating_dist.items())
+                    avg_rating = weighted_sum / total_ratings if total_ratings > 0 else None
+                else:
+                    avg_rating = None
+                
+                summarized_clusters.append({
+                    "cluster_id": cluster.get("cluster_id"),
+                    "size": cluster.get("size"),
+                    "sample_texts": cluster.get("sample_texts", [])[:3],  # Only 3 samples
+                    "avg_rating": round(avg_rating, 2) if avg_rating else None
+                })
+            
+            summarized["tool_results"][tool_key] = {
+                "clusters": summarized_clusters,
+                "num_clusters": tool_result.get("num_clusters", 0),
+                "total_documents": tool_result.get("total_documents", 0)
+            }
+        
+        elif "compute_tfidf" in tool_key:
+            top_terms = tool_result.get("top_terms", [])
+            # Keep only top 10 terms
+            summarized["tool_results"][tool_key] = {
+                "top_terms": top_terms[:10],
+                "total_documents": tool_result.get("total_documents", 0),
+                "vocabulary_size": tool_result.get("vocabulary_size", 0)
+            }
+        
+        elif "analyze_sentiment" in tool_key:
+            summarized["tool_results"][tool_key] = {
+                "total_reviews": tool_result.get("total_reviews", 0),
+                "rating_stats": tool_result.get("rating_stats", {}),
+                "sentiment_distribution": tool_result.get("sentiment_distribution", {})
+            }
+        
+        else:
+            # Keep as-is for unknown tools
+            summarized["tool_results"][tool_key] = tool_result
+    
+    return summarized
 
 
 # Define custom events for workflow steps
@@ -210,7 +298,6 @@ class ProductGapWorkflow(Workflow):
         
         # Step 5b: Execute the NLP tools on the data
         nlp_service = NLPService()
-        breakpoint()
         nlp_results = nlp_service.execute_tool_calls(
             tool_calls=nlp_plan.get('tool_calls', []),
             retrieved_data=ev.retrieved_data
@@ -248,17 +335,35 @@ class ProductGapWorkflow(Workflow):
         # Handle retrieved data if available
         if isinstance(ev, NLPAnalysisCompleteEvent) and ev.retrieved_data:
             retrieved_data = ev.retrieved_data
-            context_parts.append(f"\nRetrieved Data contains ({retrieved_data['total_rows']} rows): <data>{retrieved_data['data']}</data>")
-            context_parts.append(f"\nReasoning: {retrieved_data['reasoning']}")
-            context_parts.append(f"\nNlp analysis results: <nlp>{ev.nlp_results}</nlp>")
             
-            # Add data summary
+            # Convert JSON data to CSV format for token efficiency (especially after NLP processing)
+            formatted_data = {}
             for key, value in retrieved_data['data'].items():
-                if not key.endswith('_error'):
-                    context_parts.append(f"\n{key}: {str(value)[:500]}...")  # Truncate for context
+                if key.endswith('_error'):
+                    formatted_data[key] = value
+                elif isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
+                    # Convert list of dicts to CSV format
+                    formatted_data[key] = DataRetrievalService._format_as_csv(value)
+                else:
+                    # Already CSV string or other format
+                    formatted_data[key] = value
+            
+            context_parts.append(f"\nRetrieved Data contains ({retrieved_data['total_rows']} rows): <data>{formatted_data}</data>")
+            context_parts.append(f"\nReasoning: {retrieved_data['reasoning']}")
+            context_parts.append(f"\nNlp analysis results: <nlp>{json.dumps(ev.nlp_results, indent=2)}</nlp>")
+            
+            # Summarize NLP results to reduce token consumption
+            # summarized_nlp = _summarize_nlp_results(ev.nlp_results) if ev.nlp_results else None
+            # context_parts.append(f"\nNlp analysis results: <nlp>{summarized_nlp}</nlp>")
+
+            # # Add data summary
+            # for key, value in formatted_data.items():
+            #     if not key.endswith('_error'):
+            #         # Show first 500 chars of CSV
+            #         context_parts.append(f"\n{key}: {str(value)[:500]}...")  # Truncate for context
         
         context = "\n".join(context_parts)
-        
+        breakpoint()        
         # Generate final answer using the writer team
         answer = await generate_answer(
             context, 

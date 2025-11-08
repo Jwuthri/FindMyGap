@@ -17,6 +17,17 @@ logger = get_logger(__name__)
 class NLPService:
     """Service for executing NLP analysis on retrieved data."""
     
+    def _make_hashable(self, obj: Any) -> Any:
+        """Recursively convert an object to a hashable type."""
+        if isinstance(obj, dict):
+            return tuple(sorted((k, self._make_hashable(v)) for k, v in obj.items()))
+        elif isinstance(obj, list):
+            return tuple(self._make_hashable(item) for item in obj)
+        elif isinstance(obj, set):
+            return frozenset(self._make_hashable(item) for item in obj)
+        else:
+            return obj
+    
     def execute_tool_calls(
         self,
         tool_calls: List[Dict[str, Any]],
@@ -42,8 +53,8 @@ class NLPService:
             parameters = tool_call.get("parameters", {})
             
             # Create a unique key for deduplication
-            # Convert parameters to a sorted tuple of items for hashability
-            param_key = tuple(sorted(parameters.items()))
+            # Convert parameters to a hashable format (handles lists, dicts, etc.)
+            param_key = self._make_hashable(parameters)
             call_signature = (tool_name, dataset_name, param_key)
             
             # Skip if we've already executed this exact call
