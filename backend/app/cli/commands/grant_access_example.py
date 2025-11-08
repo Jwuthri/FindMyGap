@@ -8,7 +8,7 @@ from app import get_logger
 from app.database.base import SessionLocal
 from app.database.repositories.company import CompanyRepository
 from app.database.repositories.user import UserRepository
-from app.database.repositories.user_review_feedback import UserReviewFeedbackRepository
+from app.services.user_table_service import UserTableService
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,6 @@ def example_workflow():
     try:
         user_repo = UserRepository()
         company_repo = CompanyRepository()
-        user_review_repo = UserReviewFeedbackRepository()
         
         # Step 1: Get or create a test user
         logger.info("Step 1: Getting user...")
@@ -51,7 +50,7 @@ def example_workflow():
         
         # Step 3: Check current access
         logger.info("\nStep 3: Checking current access...")
-        current_reviews = user_review_repo.get_user_reviews(db, user.id)
+        current_reviews = UserTableService.get_reviews(db, user.id)
         logger.info(f"User currently has access to {len(current_reviews)} reviews")
         
         # Step 4: Grant access using the CLI function
@@ -73,13 +72,14 @@ def example_workflow():
         
         # Step 5: Verify access
         logger.info("\nStep 5: Verifying access...")
-        updated_reviews = user_review_repo.get_user_reviews(db, user.id)
+        updated_reviews = UserTableService.get_reviews(db, user.id)
         logger.info(f"User now has access to {len(updated_reviews)} reviews")
         
         # Step 6: Show some sample reviews
         logger.info("\nStep 6: Sample accessible reviews:")
         for i, review in enumerate(updated_reviews[:3], 1):
-            logger.info(f"  {i}. Review {review.id}: {review.text[:60]}...")
+            review_text = review.get('text', '')[:60] if isinstance(review, dict) else str(review)[:60]
+            logger.info(f"  {i}. Review {review.get('id', 'N/A')}: {review_text}...")
         
         logger.info("\n" + "="*60)
         logger.info("WORKFLOW COMPLETE")

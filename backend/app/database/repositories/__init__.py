@@ -10,7 +10,6 @@ from .message import MessageRepository
 from .review import ReviewRepository
 from .tool_call import ToolCallRepository
 from .user import UserRepository
-from .user_review_feedback import UserReviewFeedbackRepository
 from .workflow_step import WorkflowStepRepository
 
 __all__ = [
@@ -20,7 +19,6 @@ __all__ = [
     "UserDatasetRepository",
     "PlatformDatasetRepository",
     "ReviewRepository",
-    "UserReviewFeedbackRepository",
     "ConversationRepository",
     "MessageRepository",
     "WorkflowStepRepository",

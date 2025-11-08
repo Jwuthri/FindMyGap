@@ -102,7 +102,6 @@ def grant_all_reviews_access(user_id: int):
     try:
         user_repo = UserRepository()
         review_repo = ReviewRepository()
-        user_review_repo = UserReviewFeedbackRepository()
         
         # Validate user exists
         user = user_repo.get_by_id(db, user_id)
@@ -122,25 +121,34 @@ def grant_all_reviews_access(user_id: int):
         logger.info(f"Found {len(all_reviews)} total reviews in the system")
         logger.info("Copying reviews to user's table...")
         
-        # Copy each review to user's table
+        # Ensure user's table exists
+        UserTableService.create_user_table(db, user_id)
+        
+        # Copy each review to user's table (batch mode - update counts at end)
         count = 0
         for review in all_reviews:
-            user_review_repo.create(
+            UserTableService.insert_review(
                 db=db,
                 user_id=user_id,
                 company_name=review.company_name,
-                text=review.text,
+                review_text=review.text,
                 rating=review.rating,
                 category=review.category,
                 source=review.source,
                 date=review.date,
-                author=review.author
+                author=review.author,
+                update_counts=False  # Don't update on each insert for performance
             )
             count += 1
+        
+        # Update counts once at the end
+        table_name = UserTableService.get_user_table_name(user_id)
+        UserTableService._update_row_counts(db, user_id, table_name)
         
         logger.info(f"\n✅ Successfully copied {count} reviews")
         logger.info(f"   User: {user.email}")
         logger.info(f"   Reviews Copied: {count}")
+        logger.info(f"   Table: {UserTableService.get_user_table_name(user_id)}")
         
         return True
         
@@ -167,8 +175,7 @@ def revoke_company_reviews_access(user_id: int, company_name: str):
     db = SessionLocal()
     
     try:
-        from sqlalchemy import and_
-        from app.database.models.user_review_feedback import UserReviewFeedbackTable
+        from sqlalchemy import text
         
         user_repo = UserRepository()
         
@@ -181,20 +188,28 @@ def revoke_company_reviews_access(user_id: int, company_name: str):
         logger.info(f"User: {user.email} (ID: {user.id})")
         logger.info(f"Company: {company_name}")
         
-        # Delete all user reviews for this company
-        result = db.query(UserReviewFeedbackTable).filter(
-            and_(
-                UserReviewFeedbackTable.user_id == user_id,
-                UserReviewFeedbackTable.company_name == company_name
-            )
-        ).delete()
+        # Get user's table name
+        table_name = UserTableService.get_user_table_name(user_id)
         
+        # Check if table exists
+        if not UserTableService.table_exists(db, user_id):
+            logger.warning(f"⚠️  User's review table does not exist")
+            return True
+        
+        # Delete all user reviews for this company
+        delete_sql = f"DELETE FROM {table_name} WHERE company_name = :company_name"
+        result = db.execute(text(delete_sql), {"company_name": company_name})
         db.commit()
         
-        logger.info(f"\n✅ Successfully deleted {result} reviews")
+        deleted_count = result.rowcount
+        
+        # Update counts
+        UserTableService._update_row_counts(db, user_id, table_name)
+        
+        logger.info(f"\n✅ Successfully deleted {deleted_count} reviews")
         logger.info(f"   User: {user.email}")
         logger.info(f"   Company: {company_name}")
-        logger.info(f"   Reviews Deleted: {result}")
+        logger.info(f"   Reviews Deleted: {deleted_count}")
         
         return True
         

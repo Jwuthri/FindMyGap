@@ -5,7 +5,7 @@ from app.database.base import SessionLocal
 from app.database.repositories.company import CompanyRepository
 from app.database.repositories.review import ReviewRepository
 from app.database.repositories.user import UserRepository
-from app.database.repositories.user_review_feedback import UserReviewFeedbackRepository
+from app.services.user_table_service import UserTableService
 
 logger = get_logger(__name__)
 
@@ -79,7 +79,6 @@ def list_user_access(user_id: int):
     try:
         user_repo = UserRepository()
         company_repo = CompanyRepository()
-        user_review_repo = UserReviewFeedbackRepository()
         
         # Get user
         user = user_repo.get_by_id(db, user_id)
@@ -90,7 +89,7 @@ def list_user_access(user_id: int):
         logger.info(f"\nUser: {user.email} (ID: {user.id})")
         
         # Get all reviews user has access to
-        reviews = user_review_repo.get_user_reviews(db, user_id, skip=0, limit=10000)
+        reviews = UserTableService.get_reviews(db, user_id, limit=10000, offset=0)
         
         if not reviews:
             logger.info("\n⚠️  User has no review access")

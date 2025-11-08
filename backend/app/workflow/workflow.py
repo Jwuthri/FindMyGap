@@ -5,6 +5,7 @@ This workflow implements the product gap detection logic with multi-step executi
 """
 
 import json
+from datetime import datetime, date
 from typing import Any, Dict, Optional
 from llama_index.core.workflow import (
     Workflow,
@@ -31,6 +32,90 @@ from app.workflow.services import DataRetrievalService
 from app.workflow.services.nlp_service import NLPService
 
 logger = get_logger(__name__)
+
+
+def _convert_timestamp_key(key: Any) -> str:
+    """Convert a timestamp key to a string."""
+    # Handle datetime/date objects
+    if isinstance(key, (datetime, date)):
+        return key.isoformat()
+    # Handle pandas Timestamp objects
+    try:
+        import pandas as pd
+        if isinstance(key, pd.Timestamp):
+            return key.isoformat()
+    except ImportError:
+        pass
+    # Handle numpy datetime64
+    try:
+        import numpy as np
+        if isinstance(key, np.datetime64):
+            return str(key)
+    except ImportError:
+        pass
+    # For other types, convert to string
+    return str(key)
+
+
+def _json_serializer(obj: Any) -> Any:
+    """JSON serializer for objects not serializable by default json code."""
+    # Handle datetime/date objects
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    # Handle pandas Timestamp objects
+    try:
+        import pandas as pd
+        if isinstance(obj, pd.Timestamp):
+            return obj.isoformat()
+    except ImportError:
+        pass
+    # Handle numpy datetime64
+    try:
+        import numpy as np
+        if isinstance(obj, (np.datetime64, np.integer, np.floating)):
+            return obj.item() if hasattr(obj, 'item') else str(obj)
+    except ImportError:
+        pass
+    # Fallback to string representation
+    if hasattr(obj, '__dict__'):
+        return str(obj)
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def _sanitize_for_json(data: Any) -> Any:
+    """Recursively sanitize data structure for JSON serialization, handling Timestamp keys."""
+    if isinstance(data, dict):
+        sanitized = {}
+        for key, value in data.items():
+            # Convert timestamp keys to strings
+            sanitized_key = _convert_timestamp_key(key) if not isinstance(key, (str, int, float, bool, type(None))) else key
+            sanitized[sanitized_key] = _sanitize_for_json(value)
+        return sanitized
+    elif isinstance(data, (list, tuple)):
+        return [_sanitize_for_json(item) for item in data]
+    elif isinstance(data, (datetime, date)):
+        return data.isoformat()
+    else:
+        # Try to serialize the value
+        try:
+            import pandas as pd
+            if isinstance(data, pd.Timestamp):
+                return data.isoformat()
+        except ImportError:
+            pass
+        try:
+            import numpy as np
+            if isinstance(data, (np.datetime64, np.integer, np.floating)):
+                return data.item() if hasattr(data, 'item') else str(data)
+        except ImportError:
+            pass
+        return data
+
+
+def _safe_json_dumps(data: Any, indent: int = None) -> str:
+    """Safely serialize data to JSON, handling datetime/timestamp objects in both keys and values."""
+    sanitized_data = _sanitize_for_json(data)
+    return json.dumps(sanitized_data, indent=indent, default=_json_serializer)
 
 
 def _summarize_nlp_results(nlp_results: Dict[str, Any]) -> Dict[str, Any]:
@@ -350,7 +435,8 @@ class ProductGapWorkflow(Workflow):
             
             context_parts.append(f"\nRetrieved Data contains ({retrieved_data['total_rows']} rows): <data>{formatted_data}</data>")
             context_parts.append(f"\nReasoning: {retrieved_data['reasoning']}")
-            context_parts.append(f"\nNlp analysis results: <nlp>{json.dumps(ev.nlp_results, indent=2)}</nlp>")
+            # context_parts.append(f"\nNlp analysis results: <nlp>{_safe_json_dumps(ev.nlp_results, indent=2)}</nlp>")
+            context_parts.append(f"\nNlp analysis results: <nlp>{ev.nlp_results}</nlp>")
             
             # Summarize NLP results to reduce token consumption
             # summarized_nlp = _summarize_nlp_results(ev.nlp_results) if ev.nlp_results else None
@@ -363,7 +449,6 @@ class ProductGapWorkflow(Workflow):
             #         context_parts.append(f"\n{key}: {str(value)[:500]}...")  # Truncate for context
         
         context = "\n".join(context_parts)
-        breakpoint()        
         # Generate final answer using the writer team
         answer = await generate_answer(
             context, 

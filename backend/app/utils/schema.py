@@ -17,7 +17,6 @@ from app.database.repositories.dataset import (
     PlatformDatasetRepository,
     UserDatasetRepository,
 )
-from app.database.repositories.user_review_feedback import UserReviewFeedbackRepository
 from app.database.repositories.table_eda import TableEDARepository
 from app.utils import database as db_utils
 
@@ -205,7 +204,6 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
     """
     user_dataset_repo = UserDatasetRepository()
     platform_dataset_repo = PlatformDatasetRepository()
-    user_review_feedback_repo = UserReviewFeedbackRepository()
     eda_repo = TableEDARepository()
 
     schemas = []
@@ -242,7 +240,6 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
     # 2. Add user-uploaded datasets if user_id provided
     if user_id:
         user_datasets = user_dataset_repo.get_by_user(db, user_id)
-        user_reviews = user_review_feedback_repo.get_user_reviews(db, user_id)
         
         if user_datasets:
             schemas.append("=" * 60)
@@ -269,46 +266,6 @@ def get_all_available_schemas(db: Session, user_id: Optional[str] = None) -> str
                     sample_rows=sample_rows
                 )
                 schemas.append(schema)
-                schemas.append("")
-        
-        if user_reviews:
-            schemas.append("=" * 60)
-            schemas.append(f"USER REVIEWS (User: {user_id})")
-            schemas.append("=" * 60)
-
-            # Add per-user review feedback table
-            from app.services.user_table_service import UserTableService
-
-            user_table_name = UserTableService.get_user_table_name(user_id)
-
-            # Check if user's table exists
-            if UserTableService.table_exists(db, user_id):
-                # Get companies user has access to
-                user_companies = UserTableService.get_user_companies(db, user_id)
-                company_list = ", ".join(user_companies[:10])
-                if len(user_companies) > 10:
-                    company_list += f" ... and {len(user_companies) - 10} more"
-
-                # Get review count
-                review_count = UserTableService.count_reviews(db, user_id)
-
-                # Get table schema
-                review_columns = db_utils.get_table_schema(db, user_table_name)
-
-                # Get EDA from database if available
-                eda_record = eda_repo.get_by_table_name(db, user_table_name)
-                
-                # Get sample rows
-                sample_rows = db_utils.read_table_sample(db, user_table_name, limit=5)
-                
-                review_schema = format_table_schema(
-                    user_table_name,
-                    review_columns,
-                    description=f"User's reviews ({review_count} reviews). Companies: {company_list}",
-                    eda=eda_record,
-                    sample_rows=sample_rows
-                )
-                schemas.append(review_schema)
                 schemas.append("")
     
     data = "\n".join(schemas)
