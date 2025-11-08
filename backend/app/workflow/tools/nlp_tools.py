@@ -579,7 +579,7 @@ def execute_feature_extraction(
             "count": len(categorized['features']),
             "frequent": frequent_features,
             "total_unique": unique_features,
-            "method": "embeddings" if embeddings_available else ("zero-shot" if classifier else "regex")
+            "method": "embeddings" if embeddings_available else "regex"
         },
         "total_analyzed": len(df)
     }

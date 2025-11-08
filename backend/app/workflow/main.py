@@ -11,22 +11,59 @@ from app.workflow.workflow import ProductGapWorkflow
 logger = get_logger("llamaindex_workflow.main")
 
 
-async def run_workflow(query: str, user_id: int = 1, stream: bool = False):
+async def run_workflow(query: str, user_id: int = 1, conversation_id: int = None, stream: bool = False):
     """
     Execute the LlamaIndex workflow for a given query.
     
     Args:
         query: User's question
         user_id: User ID for data access
+        conversation_id: Conversation ID (creates new if not provided)
         stream: Whether to stream results (LlamaIndex workflows support this)
     """
+    from app.database.base import SessionLocal
+    from app.database.repositories import ConversationRepository, MessageRepository
+    
     logger.info("=" * 80)
     logger.info(f"🚀 Starting LlamaIndex Workflow")
     logger.info(f"   └─ Query: {query[:100]}{'...' if len(query) > 100 else ''}")
     logger.info("=" * 80)
     
-    # Create workflow instance
-    workflow = ProductGapWorkflow(user_id=user_id, timeout=900, verbose=True)
+    # Create or use existing conversation and user message
+    db_session = SessionLocal()
+    try:
+        conv_repo = ConversationRepository()
+        msg_repo = MessageRepository()
+        
+        # Create conversation if not provided
+        if conversation_id is None:
+            conversation = conv_repo.create(
+                db=db_session,
+                user_id=user_id,
+                title=query if len(query) <= 100 else query[:97] + "..."
+            )
+            conversation_id = conversation.id
+            logger.info(f"Created new conversation: {conversation_id}")
+        
+        # Create user message
+        user_message = msg_repo.create(
+            db=db_session,
+            conversation_id=conversation_id,
+            role="user",
+            content=query
+        )
+        logger.info(f"Created user message: {user_message.id}")
+        
+    finally:
+        db_session.close()
+    
+    # Create workflow instance with message_id
+    workflow = ProductGapWorkflow(
+        user_id=user_id,
+        message_id=user_message.id,
+        timeout=900,
+        verbose=True
+    )
     
     # Run workflow
     result = await workflow.run(query=query)

@@ -90,7 +90,7 @@ class NLPService:
                     logger.warning(f"Unknown tool: {tool_name}")
                     result = {"error": f"Unknown tool: {tool_name}"}
                 
-                results[f"{tool_name}_{dataset_name}"] = result
+                results[f"{tool_name}@{dataset_name}"] = result
                 logger.info(f"✓ {tool_name} completed successfully")
                 
             except Exception as e:
@@ -104,5 +104,7 @@ class NLPService:
             "total_tools_requested": len(tool_calls),
             "total_tools_executed": len(seen_calls),
             "deduplicated": deduplicated_count,
-            "successful": sum(1 for r in results.values() if "error" not in r)
+            "successful": sum(1 for r in results.values() if "error" not in r),
+            "seen_calls": list(seen_calls)
         }
+        

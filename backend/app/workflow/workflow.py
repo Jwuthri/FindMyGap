@@ -34,61 +34,29 @@ from app.workflow.services.nlp_service import NLPService
 logger = get_logger(__name__)
 
 
-def _convert_timestamp_key(key: Any) -> str:
-    """Convert a timestamp key to a string."""
-    # Handle datetime/date objects
-    if isinstance(key, (datetime, date)):
-        return key.isoformat()
-    # Handle pandas Timestamp objects
-    try:
-        import pandas as pd
-        if isinstance(key, pd.Timestamp):
-            return key.isoformat()
-    except ImportError:
-        pass
-    # Handle numpy datetime64
-    try:
-        import numpy as np
-        if isinstance(key, np.datetime64):
-            return str(key)
-    except ImportError:
-        pass
-    # For other types, convert to string
-    return str(key)
-
-
-def _json_serializer(obj: Any) -> Any:
-    """JSON serializer for objects not serializable by default json code."""
-    # Handle datetime/date objects
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    # Handle pandas Timestamp objects
-    try:
-        import pandas as pd
-        if isinstance(obj, pd.Timestamp):
-            return obj.isoformat()
-    except ImportError:
-        pass
-    # Handle numpy datetime64
-    try:
-        import numpy as np
-        if isinstance(obj, (np.datetime64, np.integer, np.floating)):
-            return obj.item() if hasattr(obj, 'item') else str(obj)
-    except ImportError:
-        pass
-    # Fallback to string representation
-    if hasattr(obj, '__dict__'):
-        return str(obj)
-    raise TypeError(f"Type {type(obj)} not serializable")
-
-
 def _sanitize_for_json(data: Any) -> Any:
-    """Recursively sanitize data structure for JSON serialization, handling Timestamp keys."""
+    """Recursively sanitize data for JSON serialization, handling Timestamp keys and values."""
+    from datetime import datetime, date
+    
     if isinstance(data, dict):
         sanitized = {}
         for key, value in data.items():
-            # Convert timestamp keys to strings
-            sanitized_key = _convert_timestamp_key(key) if not isinstance(key, (str, int, float, bool, type(None))) else key
+            # Convert non-standard keys to strings
+            if isinstance(key, (datetime, date)):
+                sanitized_key = key.isoformat()
+            elif not isinstance(key, (str, int, float, bool, type(None))):
+                # Try pandas Timestamp
+                try:
+                    import pandas as pd
+                    if isinstance(key, pd.Timestamp):
+                        sanitized_key = key.isoformat()
+                    else:
+                        sanitized_key = str(key)
+                except (ImportError, AttributeError):
+                    sanitized_key = str(key)
+            else:
+                sanitized_key = key
+            
             sanitized[sanitized_key] = _sanitize_for_json(value)
         return sanitized
     elif isinstance(data, (list, tuple)):
@@ -96,113 +64,20 @@ def _sanitize_for_json(data: Any) -> Any:
     elif isinstance(data, (datetime, date)):
         return data.isoformat()
     else:
-        # Try to serialize the value
+        # Handle pandas/numpy types
         try:
             import pandas as pd
             if isinstance(data, pd.Timestamp):
                 return data.isoformat()
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
         try:
             import numpy as np
             if isinstance(data, (np.datetime64, np.integer, np.floating)):
                 return data.item() if hasattr(data, 'item') else str(data)
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
         return data
-
-
-def _safe_json_dumps(data: Any, indent: int = None) -> str:
-    """Safely serialize data to JSON, handling datetime/timestamp objects in both keys and values."""
-    sanitized_data = _sanitize_for_json(data)
-    return json.dumps(sanitized_data, indent=indent, default=_json_serializer)
-
-
-def _summarize_nlp_results(nlp_results: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Summarize NLP results to reduce token consumption.
-    Keeps key insights but removes verbose details.
-    """
-    if not nlp_results or "tool_results" not in nlp_results:
-        return nlp_results
-    
-    summarized = {
-        "tool_results": {},
-        "total_tools_requested": nlp_results.get("total_tools_requested", 0),
-        "total_tools_executed": nlp_results.get("total_tools_executed", 0),
-        "deduplicated": nlp_results.get("deduplicated", 0),
-        "successful": nlp_results.get("successful", 0)
-    }
-    
-    for tool_key, tool_result in nlp_results["tool_results"].items():
-        if "error" in tool_result:
-            summarized["tool_results"][tool_key] = tool_result
-            continue
-        
-        # Summarize based on tool type
-        if "identify_features" in tool_key:
-            summarized["tool_results"][tool_key] = {
-                "feature_requests": {
-                    "count": tool_result.get("feature_requests", {}).get("count", 0),
-                    "total_unique": tool_result.get("feature_requests", {}).get("total_unique", 0)
-                },
-                "pain_points": {
-                    "count": tool_result.get("pain_points", {}).get("count", 0)
-                },
-                "product_gaps": {
-                    "count": tool_result.get("product_gaps", {}).get("count", 0)
-                },
-                "total_analyzed": tool_result.get("total_analyzed", 0)
-            }
-        
-        elif "cluster_reviews" in tool_key:
-            clusters = tool_result.get("clusters", [])
-            # Keep only top 3 clusters with limited samples
-            summarized_clusters = []
-            for cluster in clusters[:3]:
-                rating_dist = cluster.get("rating_distribution", {})
-                # Calculate weighted average rating
-                if rating_dist:
-                    total_ratings = sum(rating_dist.values())
-                    weighted_sum = sum(rating * count for rating, count in rating_dist.items())
-                    avg_rating = weighted_sum / total_ratings if total_ratings > 0 else None
-                else:
-                    avg_rating = None
-                
-                summarized_clusters.append({
-                    "cluster_id": cluster.get("cluster_id"),
-                    "size": cluster.get("size"),
-                    "sample_texts": cluster.get("sample_texts", [])[:3],  # Only 3 samples
-                    "avg_rating": round(avg_rating, 2) if avg_rating else None
-                })
-            
-            summarized["tool_results"][tool_key] = {
-                "clusters": summarized_clusters,
-                "num_clusters": tool_result.get("num_clusters", 0),
-                "total_documents": tool_result.get("total_documents", 0)
-            }
-        
-        elif "compute_tfidf" in tool_key:
-            top_terms = tool_result.get("top_terms", [])
-            # Keep only top 10 terms
-            summarized["tool_results"][tool_key] = {
-                "top_terms": top_terms[:10],
-                "total_documents": tool_result.get("total_documents", 0),
-                "vocabulary_size": tool_result.get("vocabulary_size", 0)
-            }
-        
-        elif "analyze_sentiment" in tool_key:
-            summarized["tool_results"][tool_key] = {
-                "total_reviews": tool_result.get("total_reviews", 0),
-                "rating_stats": tool_result.get("rating_stats", {}),
-                "sentiment_distribution": tool_result.get("sentiment_distribution", {})
-            }
-        
-        else:
-            # Keep as-is for unknown tools
-            summarized["tool_results"][tool_key] = tool_result
-    
-    return summarized
 
 
 # Define custom events for workflow steps
@@ -264,9 +139,10 @@ class ProductGapWorkflow(Workflow):
     6. NLP Analysis OR Skip Retrieval -> Generate Answer
     """
 
-    def __init__(self, user_id: int = 1, **kwargs):
+    def __init__(self, user_id: int = 1, message_id: int = None, **kwargs):
         super().__init__(**kwargs)
         self.user_id = user_id
+        self.message_id = message_id
         
         # Load table schemas
         db_session = SessionLocal()
@@ -281,6 +157,59 @@ class ProductGapWorkflow(Workflow):
         """Draw the workflow steps."""
         draw_all_possible_flows(self, filename=filename)
 
+    def _track_step(self, step_name: str, step_type: str, input_data: dict = None, output_data: dict = None, status: str = "completed", error_message: str = None):
+        """Track workflow step in database."""
+        if not self.message_id:
+            return None
+        
+        from app.database.repositories import WorkflowStepRepository
+        from datetime import datetime
+        
+        db_session = SessionLocal()
+        try:
+            repo = WorkflowStepRepository()
+            step = repo.create(
+                db=db_session,
+                message_id=self.message_id,
+                step_name=step_name,
+                step_type=step_type,
+                input_data=input_data,
+                output_data=output_data,
+                status=status,
+                error_message=error_message,
+                started_at=datetime.utcnow(),
+                completed_at=datetime.utcnow()
+            )
+            return step
+        finally:
+            db_session.close()
+    
+    def _track_tool_calls(self, workflow_step_id: int, tool_calls: list):
+        """Track tool calls in database."""
+        if not workflow_step_id:
+            return
+        
+        from app.database.repositories import ToolCallRepository
+        from datetime import datetime
+        
+        db_session = SessionLocal()
+        try:
+            repo = ToolCallRepository()
+            for tool_call in tool_calls:
+                repo.create(
+                    db=db_session,
+                    workflow_step_id=workflow_step_id,
+                    tool_name=tool_call.get('tool_name', 'unknown'),
+                    tool_input=tool_call.get('parameters', {}),
+                    tool_output=tool_call.get('result', {}),
+                    status=tool_call.get('status', 'completed'),
+                    error_message=tool_call.get('error', None),
+                    started_at=datetime.utcnow(),
+                    completed_at=datetime.utcnow()
+                )
+        finally:
+            db_session.close()
+
     @step
     async def start_workflow(self, ctx: Context, ev: StartEvent) -> QueryAnalyzedEvent:
         """Step 1: Analyze the incoming query."""
@@ -291,6 +220,18 @@ class ProductGapWorkflow(Workflow):
         analysis = await analyze_query(query)
         logger.info(f"✓ Query Analysis complete: needs_data={analysis.needs_data_retrieval}")
         
+        # Track step in database
+        self._track_step(
+            step_name="start_workflow",
+            step_type="query_analysis",
+            input_data={"query": query},
+            output_data={
+                "needs_data_retrieval": analysis.needs_data_retrieval,
+                "needs_nlp_analysis": analysis.needs_nlp_analysis,
+                "query_type": analysis.query_type
+            }
+        )
+        
         return QueryAnalyzedEvent(query=query, analysis=analysis)
 
     @step
@@ -299,6 +240,17 @@ class ProductGapWorkflow(Workflow):
         logger.info("▶️  Step 2: Format Detection")
         format_info = await detect_format(ev.query)
         logger.info(f"✓ Format Detection complete: {format_info.format_type}")
+        
+        # Track step in database
+        self._track_step(
+            step_name="detect_output_format",
+            step_type="format_detection",
+            input_data={"query": ev.query},
+            output_data={
+                "format_type": format_info.format_type,
+                "format_details": format_info.format_details
+            }
+        )
         
         return FormatDetectedEvent(
             query=ev.query,
@@ -311,6 +263,15 @@ class ProductGapWorkflow(Workflow):
         """Step 3: Plan data retrieval if needed, otherwise skip."""
         if not ev.analysis.needs_data_retrieval:
             logger.info("▶️  Step 3: Skipping data retrieval (not needed)")
+            
+            # Track skip step in database
+            self._track_step(
+                step_name="plan_data_retrieval",
+                step_type="skip_retrieval",
+                input_data={"needs_data_retrieval": False},
+                output_data={"skipped": True}
+            )
+            
             return SkipRetrievalEvent(
                 query=ev.query,
                 analysis=ev.analysis,
@@ -320,6 +281,17 @@ class ProductGapWorkflow(Workflow):
         logger.info("▶️  Step 3: Retrieval Planning")
         plan = await plan_retrieval(ev.query, self.table_schemas, ev.analysis)
         logger.info(f"✓ Retrieval Planning complete: {len(plan.sql_queries)} queries")
+        
+        # Track step in database
+        self._track_step(
+            step_name="plan_data_retrieval",
+            step_type="retrieval_planning",
+            input_data={"query": ev.query, "num_schemas": len(self.table_schemas)},
+            output_data={
+                "num_queries": len(plan.sql_queries),
+                "reasoning": plan.reasoning
+            }
+        )
         
         return RetrievalPlanEvent(
             query=ev.query,
@@ -341,10 +313,23 @@ class ProductGapWorkflow(Workflow):
         try:
             service = DataRetrievalService(db_session)
             retrieved_data = service.execute_retrieval_plan(ev.plan, format=data_format)
-            # retrieved_data2 = service.execute_retrieval_plan(ev.plan, format="csv")
             logger.info(f"✓ Data Retrieval complete: {retrieved_data['total_rows']} rows")
         finally:
             db_session.close()
+        
+        # Track step in database
+        self._track_step(
+            step_name="retrieve_data",
+            step_type="data_retrieval",
+            input_data={
+                "num_queries": len(ev.plan.sql_queries),
+                "data_format": data_format
+            },
+            output_data={
+                "total_rows": retrieved_data['total_rows'],
+                "reasoning": retrieved_data['reasoning']
+            }
+        )
         
         return DataRetrievedEvent(
             query=ev.query,
@@ -361,6 +346,15 @@ class ProductGapWorkflow(Workflow):
         # Check if NLP analysis is needed
         if not ev.analysis.needs_nlp_analysis:
             logger.info("Skipping NLP analysis (not needed)")
+            
+            # Track skip step in database
+            self._track_step(
+                step_name="nlp_analysis",
+                step_type="nlp_analysis",
+                input_data={"needs_nlp_analysis": False},
+                output_data={"skipped": True}
+            )
+            
             return NLPAnalysisCompleteEvent(
                 query=ev.query,
                 analysis=ev.analysis,
@@ -393,6 +387,54 @@ class ProductGapWorkflow(Workflow):
         
         logger.info(f"✓ NLP Execution complete: {nlp_results.get('successful', 0)} tools succeeded")
         
+        # Track step in database (including tool calls)
+        step = self._track_step(
+            step_name="nlp_analysis",
+            step_type="nlp_analysis",
+            input_data={
+                "num_tool_calls": len(nlp_plan.get('tool_calls', [])),
+                "tools_requested": nlp_results.get('total_tools_requested', 0)
+            },
+            output_data={
+                "tools_executed": nlp_results.get('total_tools_executed', 0),
+                "successful": nlp_results.get('successful', 0),
+                "deduplicated": nlp_results.get('deduplicated', 0)
+            }
+        )
+        # Track individual tool calls
+        if step and nlp_results.get('tool_results'):
+            tool_calls_for_db = []
+            seen_calls = nlp_results.get('seen_calls', [])
+            
+            for tool_key, result in nlp_results.get('tool_results', {}).items():
+                parts = tool_key.rsplit('@', 1)  # DONT CHANGE THAT FUCKING LLM
+                tool_name = parts[0] if len(parts) > 1 else tool_key
+                dataset_name = parts[1] if len(parts) > 1 else 'unknown'
+                
+                # Find matching seen_call to get full parameters
+                parameters = {'dataset_name': dataset_name}
+                for seen_call in seen_calls:
+                    seen_tool_name, seen_dataset_name, param_key = seen_call
+                    if seen_tool_name == tool_name and seen_dataset_name == dataset_name:
+                        # param_key is a tuple of parameter items
+                        if isinstance(param_key, tuple):
+                            parameters = dict(param_key)
+                            parameters['dataset_name'] = dataset_name
+                        break
+                
+                # Sanitize result to handle Timestamp keys/values
+                sanitized_result = _sanitize_for_json(result) if result else None
+                
+                tool_calls_for_db.append({
+                    'tool_name': tool_name,
+                    'parameters': _sanitize_for_json(parameters),
+                    'result': sanitized_result if not result.get('error') else None,
+                    'status': 'failed' if result.get('error') else 'completed',
+                    'error': result.get('error', None)
+                })
+            
+            self._track_tool_calls(step.id, tool_calls_for_db)
+        
         return NLPAnalysisCompleteEvent(
             query=ev.query,
             analysis=ev.analysis,
@@ -415,13 +457,12 @@ class ProductGapWorkflow(Workflow):
         
         if ev.analysis:
             context_parts.append(f"\nQuery Type: {ev.analysis.query_type}")
-            # context_parts.append(f"Analysis Type: {ev.analysis.analysis_type}")
         
         # Handle retrieved data if available
         if isinstance(ev, NLPAnalysisCompleteEvent) and ev.retrieved_data:
             retrieved_data = ev.retrieved_data
             
-            # Convert JSON data to CSV format for token efficiency (especially after NLP processing)
+            # Convert JSON data to CSV format for token efficiency
             formatted_data = {}
             for key, value in retrieved_data['data'].items():
                 if key.endswith('_error'):
@@ -435,20 +476,10 @@ class ProductGapWorkflow(Workflow):
             
             context_parts.append(f"\nRetrieved Data contains ({retrieved_data['total_rows']} rows): <data>{formatted_data}</data>")
             context_parts.append(f"\nReasoning: {retrieved_data['reasoning']}")
-            # context_parts.append(f"\nNlp analysis results: <nlp>{_safe_json_dumps(ev.nlp_results, indent=2)}</nlp>")
             context_parts.append(f"\nNlp analysis results: <nlp>{ev.nlp_results}</nlp>")
-            
-            # Summarize NLP results to reduce token consumption
-            # summarized_nlp = _summarize_nlp_results(ev.nlp_results) if ev.nlp_results else None
-            # context_parts.append(f"\nNlp analysis results: <nlp>{summarized_nlp}</nlp>")
-
-            # # Add data summary
-            # for key, value in formatted_data.items():
-            #     if not key.endswith('_error'):
-            #         # Show first 500 chars of CSV
-            #         context_parts.append(f"\n{key}: {str(value)[:500]}...")  # Truncate for context
         
         context = "\n".join(context_parts)
+        
         # Generate final answer using the writer team
         answer = await generate_answer(
             context, 
@@ -456,6 +487,42 @@ class ProductGapWorkflow(Workflow):
         )
         
         logger.info("✓ Answer generation complete")
+        
+        # Track step in database
+        self._track_step(
+            step_name="generate_final_answer",
+            step_type="answer_generation",
+            input_data={
+                "context_length": len(context),
+                "format_type": ev.format_info.format_type if ev.format_info else "markdown"
+            },
+            output_data={
+                "answer_length": len(answer)
+            }
+        )
+        
+        # Create assistant message with the answer
+        if self.message_id:
+            from app.database.repositories import MessageRepository
+            
+            db_session = SessionLocal()
+            try:
+                # Get the conversation_id from the user message
+                msg_repo = MessageRepository()
+                user_message = msg_repo.get_by_id(db_session, self.message_id)
+                
+                if user_message:
+                    # Create assistant message
+                    assistant_message = msg_repo.create(
+                        db=db_session,
+                        conversation_id=user_message.conversation_id,
+                        role="assistant",
+                        content=answer
+                    )
+                    logger.info(f"Created assistant message: {assistant_message.id}")
+            finally:
+                db_session.close()
+        
         logger.info("🏁 Workflow completed")
         
         return StopEvent(result=answer)
