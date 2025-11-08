@@ -139,10 +139,11 @@ class ProductGapWorkflow(Workflow):
     6. NLP Analysis OR Skip Retrieval -> Generate Answer
     """
 
-    def __init__(self, user_id: int = 1, message_id: int = None, **kwargs):
+    def __init__(self, user_id: int = 1, conversation_id: int = None, **kwargs):
         super().__init__(**kwargs)
         self.user_id = user_id
-        self.message_id = message_id
+        self.conversation_id = conversation_id
+        self.message_id = None  # Will be set in start_workflow step
         
         # Load table schemas
         db_session = SessionLocal()
@@ -212,9 +213,27 @@ class ProductGapWorkflow(Workflow):
 
     @step
     async def start_workflow(self, ctx: Context, ev: StartEvent) -> QueryAnalyzedEvent:
-        """Step 1: Analyze the incoming query."""
+        """Step 1: Create user message and analyze the incoming query."""
         query = ev.query
         logger.info(f"🚀 Workflow started with query: {query}")
+        
+        # Create user message in the database
+        if self.conversation_id:
+            from app.database.repositories import MessageRepository
+            
+            db_session = SessionLocal()
+            try:
+                msg_repo = MessageRepository()
+                user_message = msg_repo.create(
+                    db=db_session,
+                    conversation_id=self.conversation_id,
+                    role="user",
+                    content=query
+                )
+                self.message_id = user_message.id
+                logger.info(f"Created user message: {self.message_id}")
+            finally:
+                db_session.close()
         
         logger.info("▶️  Step 1: Query Analysis")
         analysis = await analyze_query(query)
@@ -502,24 +521,20 @@ class ProductGapWorkflow(Workflow):
         )
         
         # Create assistant message with the answer
-        if self.message_id:
+        if self.conversation_id:
             from app.database.repositories import MessageRepository
             
             db_session = SessionLocal()
             try:
-                # Get the conversation_id from the user message
                 msg_repo = MessageRepository()
-                user_message = msg_repo.get_by_id(db_session, self.message_id)
-                
-                if user_message:
-                    # Create assistant message
-                    assistant_message = msg_repo.create(
-                        db=db_session,
-                        conversation_id=user_message.conversation_id,
-                        role="assistant",
-                        content=answer
-                    )
-                    logger.info(f"Created assistant message: {assistant_message.id}")
+                # Create assistant message
+                assistant_message = msg_repo.create(
+                    db=db_session,
+                    conversation_id=self.conversation_id,
+                    role="assistant",
+                    content=answer
+                )
+                logger.info(f"Created assistant message: {assistant_message.id}")
             finally:
                 db_session.close()
         

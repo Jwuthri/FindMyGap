@@ -22,18 +22,17 @@ async def run_workflow(query: str, user_id: int = 1, conversation_id: int = None
         stream: Whether to stream results (LlamaIndex workflows support this)
     """
     from app.database.base import SessionLocal
-    from app.database.repositories import ConversationRepository, MessageRepository
+    from app.database.repositories import ConversationRepository
     
     logger.info("=" * 80)
     logger.info(f"🚀 Starting LlamaIndex Workflow")
     logger.info(f"   └─ Query: {query[:100]}{'...' if len(query) > 100 else ''}")
     logger.info("=" * 80)
     
-    # Create or use existing conversation and user message
+    # Create or use existing conversation
     db_session = SessionLocal()
     try:
         conv_repo = ConversationRepository()
-        msg_repo = MessageRepository()
         
         # Create conversation if not provided
         if conversation_id is None:
@@ -45,22 +44,13 @@ async def run_workflow(query: str, user_id: int = 1, conversation_id: int = None
             conversation_id = conversation.id
             logger.info(f"Created new conversation: {conversation_id}")
         
-        # Create user message
-        user_message = msg_repo.create(
-            db=db_session,
-            conversation_id=conversation_id,
-            role="user",
-            content=query
-        )
-        logger.info(f"Created user message: {user_message.id}")
-        
     finally:
         db_session.close()
     
-    # Create workflow instance with message_id
+    # Create workflow instance with conversation_id
     workflow = ProductGapWorkflow(
         user_id=user_id,
-        message_id=user_message.id,
+        conversation_id=conversation_id,
         timeout=900,
         verbose=True
     )
