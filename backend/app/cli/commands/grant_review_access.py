@@ -4,7 +4,7 @@ from app import get_logger
 from app.database.base import SessionLocal
 from app.database.repositories.review import ReviewRepository
 from app.database.repositories.user import UserRepository
-from app.database.repositories.user_review_feedback import UserReviewFeedbackRepository
+from app.services.user_table_service import UserTableService
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,6 @@ def grant_company_reviews_access(user_id: int, company_name: str):
     try:
         user_repo = UserRepository()
         review_repo = ReviewRepository()
-        user_review_repo = UserReviewFeedbackRepository()
         
         # Validate user exists
         user = user_repo.get_by_id(db, user_id)
@@ -36,6 +35,9 @@ def grant_company_reviews_access(user_id: int, company_name: str):
         
         logger.info(f"User: {user.email} (ID: {user.id})")
         logger.info(f"Company: {company_name}")
+        
+        # Ensure user's table exists
+        UserTableService.create_user_table(db, user_id)
         
         # Get all reviews for this company
         all_reviews = review_repo.get_by_company(db, company_name, skip=0, limit=10000)
@@ -47,26 +49,32 @@ def grant_company_reviews_access(user_id: int, company_name: str):
         logger.info(f"Found {len(all_reviews)} reviews for {company_name}")
         logger.info("Copying reviews to user's table...")
         
-        # Copy each review to user's table
+        # Copy each review to user's table (batch mode - update counts at end)
         count = 0
         for review in all_reviews:
-            user_review_repo.create(
+            UserTableService.insert_review(
                 db=db,
                 user_id=user_id,
                 company_name=review.company_name,
-                text=review.text,
+                review_text=review.text,
                 rating=review.rating,
                 category=review.category,
                 source=review.source,
                 date=review.date,
-                author=review.author
+                author=review.author,
+                update_counts=False  # Don't update on each insert for performance
             )
             count += 1
+        
+        # Update counts once at the end
+        table_name = UserTableService.get_user_table_name(user_id)
+        UserTableService._update_row_counts(db, user_id, table_name)
         
         logger.info(f"\n✅ Successfully copied {count} reviews")
         logger.info(f"   User: {user.email}")
         logger.info(f"   Company: {company_name}")
         logger.info(f"   Reviews Copied: {count}")
+        logger.info(f"   Table: {UserTableService.get_user_table_name(user_id)}")
         
         return True
         
